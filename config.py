@@ -1,1 +1,4 @@
-openai_API_key = "YOUR API KEY"
+OPENAI_API_KEY = ""
+OPENAI_MODEL = "gpt-4-0613"
+
+LEARNING_LANGUAGE = "Italian"

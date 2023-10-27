@@ -33,13 +33,51 @@ input#description {
   width: 300px;  /* or use percentage for responsiveness e.g., 80% */
   height: 30px; 
   padding: 5px;
-  font-size: 1.2em;
+  font-size: 0.9em;
+  border-radius: 6px;
+  border: #3498db solid 1px;
+  color: #3498db;  
 }
 
-button#fetchButton {
+.button {
   width: 150px; 
   height: 40px; 
   font-size: 1em; 
+  background-color: white;
+  border-radius: 6px;
+  border: #3498db solid 1px;
+  color: #3498db;  
+}
+
+.secondary {
+  background-color: white;
+  border-radius: 6px;
+  border: #3498db solid 1px;
+  color: #3498db;  
+}
+
+.secondary:not(:disabled):hover {
+  background-color: #3498db;
+  color: white;
+}
+
+.primary {
+  background-color: #3498db;
+  border-radius: 6px;
+  border: #3498db solid 1px;
+  color: white;
+}
+
+.primary:disabled {
+  background-color: #ddd;
+  border-color: #ddd;
+  color: #555;
+  cursor: not-allowed;
+}
+
+.primary:not(:disabled):hover {
+  background-color: white;
+  color: #3498db;
 }
 
 .loading {
