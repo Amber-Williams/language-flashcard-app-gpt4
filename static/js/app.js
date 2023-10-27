@@ -48,7 +48,6 @@ let currentIndex = -1;
 let correctAnswer;
 
 //Initial setup
-document.getElementById("english").textContent = "- ";
 document.getElementById("sentenceLANG").textContent = "-";
 document.getElementById("sentenceEN").textContent = "-";
 document.getElementById("next").disabled = true;
@@ -65,11 +64,10 @@ function nextWord() {
   document.getElementById("options").innerHTML = options
     .map(
       (option) =>
-        `<button onclick="checkAnswer('${option}')">${option}</button>`
+        `<button class="button" onclick="checkAnswer('${option}')">${option}</button>`
     )
     .join("");
 
-  document.getElementById("english").textContent = "- ";
   document.getElementById("sentenceLANG").textContent = "-";
   document.getElementById("sentenceEN").textContent = "-";
 
@@ -80,19 +78,14 @@ function checkAnswer(answer) {
   const buttons = document.querySelectorAll("#options button");
   buttons.forEach((button) => {
     button.disabled = true;
-    if (button.textContent === answer && answer === correctAnswer) {
-      button.style.backgroundColor = "green";
-    } else if (button.textContent === answer) {
-      button.style.backgroundColor = "red";
+    if (button.textContent === answer) {
+      button.style.backgroundColor = "#da1e28";
     }
     if (button.textContent === correctAnswer) {
-      button.style.backgroundColor = "green";
+      button.style.backgroundColor = "#24a148";
     }
   });
 
-  document.getElementById(
-    "english"
-  ).textContent = `Translation: ${wordsList[currentIndex].english}`;
   document.getElementById(
     "sentenceLANG"
   ).textContent = `${wordsList[currentIndex].sentenceLANG}`;

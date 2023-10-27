@@ -8,10 +8,9 @@ from sqlalchemy import (
     Integer,
     String,
     ForeignKey,
-    UniqueConstraint
 )
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import relationship,sessionmaker,backref, mapped_column, Mapped
+from sqlalchemy.orm import relationship, sessionmaker
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from flask import Flask, render_template, request, jsonify
@@ -115,6 +114,7 @@ def get_seen_word():
                 "incorrect_options": [incorrect_option.option for incorrect_option in ormCard.incorrect_options]
             }
             cards.append(card)
+        shuffle(cards)
         return jsonify(cards)
     except json.decoder.JSONDecodeError:
         print("Couldn't parse JSON from model response")
