@@ -51,8 +51,10 @@ let correctAnswer;
 document.getElementById("sentenceLANG").textContent = "-";
 document.getElementById("sentenceEN").textContent = "-";
 document.getElementById("next").disabled = true;
+const playBtn = document.getElementById("play-control-btn");
 
 function nextWord() {
+  playBtn.style.display = "none";
   currentIndex = (currentIndex + 1) % wordsList.length;
   const word = wordsList[currentIndex];
   document.getElementById("word").textContent = word.word;
@@ -86,14 +88,16 @@ function checkAnswer(answer) {
     }
   });
 
-  document.getElementById(
-    "sentenceLANG"
-  ).textContent = `${wordsList[currentIndex].sentenceLANG}`;
+  const wordUsedInSentence = `${wordsList[currentIndex].sentenceLANG}`;
+  document.getElementById("sentenceLANG").textContent = wordUsedInSentence;
   document.getElementById(
     "sentenceEN"
   ).textContent = `${wordsList[currentIndex].sentenceEN}`;
 
   document.getElementById("next").disabled = false;
+  if (window._speak) {
+    window._speak(wordUsedInSentence);
+  }
 }
 
 nextWord();

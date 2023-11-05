@@ -7,11 +7,23 @@ body {
   background-color: #f0f0f0;
 }
 
+.mb-1 {
+  margin-bottom: 8px;
+}
+
+.mb-2 {
+  margin-bottom: 16px;
+}
+
 #app {
+  text-align: center;
+  position: relative;
+}
+
+.card {
   background-color: #fff;
   border-radius: 8px;
   padding: 20px;
-  text-align: center;
 }
 
 #word {
@@ -109,4 +121,34 @@ input#description {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+
+
+#play-control-btn{
+  cursor: pointer;
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: none;
+}
+
+#bar {
+  transition: all 0.2s ease-in-out;
+}
+
+#border {
+  stroke: #3498db;
+}
+
+#pause {
+  display: none;
+}
+
+.playing #play {
+  display: none;
+}
+
+.playing #pause {
+  display: block
 }
