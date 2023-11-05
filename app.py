@@ -47,6 +47,7 @@ session = sessionmaker()(bind=engine)
 
 chat = ChatOpenAI(openai_api_key=config.OPENAI_API_KEY, temperature=1, model=config.OPENAI_MODEL)
 description = """```{description}```"""
+db_words = """```{db_words}```"""
 
 
 string_template = f"""Give 5 words written in {language} that are around the topic: {description}, \
@@ -56,7 +57,8 @@ Also give me the English translation of the word, and present the word within th
 of an {language} sentence, and also provide its English translation. Do not provide words that are
 the same in both languages. Only provide words that are relevant to the topic.
 
-
+Do NOT include these words that are already in the database, BUT they CAN be used as incorrect options:
+{db_words}
 
 Instructions:
 1. Format the output as JSON with the data represented as an array of dictionaries with the following keys:
@@ -78,8 +80,10 @@ def home():
 
 @app.route('/get_new_words', methods=['POST'])
 def get_word():
+    orm_cards = session.query(Card.word).all()
+    db_words_str = json.dumps([orm_card.word for orm_card in orm_cards])
     description = request.json.get('description', '')
-    words_request = prompt_template.format_messages(description=description)
+    words_request = prompt_template.format_messages(description=description, db_words=db_words_str)
     words_response = chat(words_request)
     try:
         words = json.loads(words_response.content)
@@ -103,15 +107,15 @@ def get_word():
 def get_seen_word():
     try:
         cards = []
-        ormCards = session.query(Card).all()
-        for ormCard in ormCards:
+        orm_cards = session.query(Card).all()
+        for orm_card in orm_cards:
             card = {
-                "word": ormCard.word,
-                "correct": ormCard.english,
-                "english": ormCard.english,
-                "sentenceLANG": ormCard.sentenceLANG,
-                "sentenceEN": ormCard.sentenceEN,
-                "incorrect_options": [incorrect_option.option for incorrect_option in ormCard.incorrect_options]
+                "word": orm_card.word,
+                "correct": orm_card.english,
+                "english": orm_card.english,
+                "sentenceLANG": orm_card.sentenceLANG,
+                "sentenceEN": orm_card.sentenceEN,
+                "incorrect_options": [incorrect_option.option for incorrect_option in orm_card.incorrect_options]
             }
             cards.append(card)
         shuffle(cards)
