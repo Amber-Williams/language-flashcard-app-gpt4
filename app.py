@@ -2,6 +2,8 @@ import json
 import os
 from random import shuffle
 
+
+
 from sqlalchemy import (
     create_engine,
     Column,
@@ -13,16 +15,18 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-import config
+BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 app = Flask(__name__)
-language = config.LEARNING_LANGUAGE
-BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-conn_str = 'sqlite:///'+os.path.join(BASE_DIR, f'{language}.db')
-engine = create_engine(conn_str)
+app.config.from_object('config.Config')
+cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 Base = declarative_base()
+language = app.config["LEARNING_LANGUAGE"]
+conn_str = 'sqlite:///'+os.path.join(BASE_DIR, f'{language}.db')
+engine = create_engine(conn_str, echo=True)
 
 class Card(Base):
     __tablename__ = 'cards'
@@ -34,6 +38,7 @@ class Card(Base):
     sentenceEN = Column(String, nullable=False)
     incorrect_options = relationship("IncorrectOption", back_populates="card")
 
+
 class IncorrectOption(Base):
     __tablename__ = 'incorrect_options'
     
@@ -42,10 +47,11 @@ class IncorrectOption(Base):
     card_id = Column(Integer, ForeignKey('cards.id'))
     card = relationship("Card", back_populates="incorrect_options")
 
+
 Base.metadata.create_all(engine)
 session = sessionmaker()(bind=engine)
 
-chat = ChatOpenAI(openai_api_key=config.OPENAI_API_KEY, temperature=1, model=config.OPENAI_MODEL)
+chat = ChatOpenAI(openai_api_key=app.config["OPENAI_API_KEY"], temperature=1, model=app.config["OPENAI_MODEL"])
 description = """```{description}```"""
 db_words = """```{db_words}```"""
 
@@ -73,12 +79,7 @@ Instructions:
 prompt_template = ChatPromptTemplate.from_template(string_template)
 
 
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-
-@app.route('/get_new_words', methods=['POST'])
+@app.route('/api/new_words', methods=['POST'])
 def get_word():
     orm_cards = session.query(Card.word).all()
     db_words_str = json.dumps([orm_card.word for orm_card in orm_cards])
@@ -103,7 +104,7 @@ def get_word():
         return 500
 
 
-@app.route('/get_seen_words', methods=['GET'])
+@app.route('/api/seen_words', methods=['GET'])
 def get_seen_word():
     try:
         cards = []
