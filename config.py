@@ -10,6 +10,10 @@ class Config(object):
     OPENAI_MODEL = "gpt-4-0613"
     LEARNING_LANGUAGE = "Italian"
 
+    @property
+    def DATABASE_URI(self):
+        return 'sqlite:///' + os.path.join(BASE_DIR, f'{self.LEARNING_LANGUAGE}.db')
+
 
 class ProductionConfig(Config):
     pass
