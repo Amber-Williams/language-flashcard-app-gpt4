@@ -1,4 +1,23 @@
-OPENAI_API_KEY = ""
-OPENAI_MODEL = "gpt-4-0613"
+import os
 
-LEARNING_LANGUAGE = "Italian"
+BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+
+
+class Config(object):
+    DEBUG = False
+    TESTING = False
+    OPENAI_API_KEY = ""
+    OPENAI_MODEL = "gpt-4-0613"
+    LEARNING_LANGUAGE = "Italian"
+
+
+class ProductionConfig(Config):
+    pass
+
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+
+
+class TestingConfig(Config):
+    TESTING = True

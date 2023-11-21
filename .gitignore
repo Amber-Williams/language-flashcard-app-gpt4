@@ -1,5 +1,12 @@
 __pycache__/
 notebooks/
 .DS_Store
+.venv/
 
 *.db
+
+# Front-end files
+dist/
+
+# Todo list
+todo
