@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Theme } from '@mb3r/component-library';
+import languageCodes from './../data/language-codes.json';
 
-const SoundButton = ({ text }: { text: string }) => {
+const SoundButton = ({ text, language, speedPercent }: { text: string; language: string; speedPercent: number }) => {
   const theme = Theme.useTheme();
   const [utterance, setUtterance] = useState<SpeechSynthesisUtterance>();
   const [synth, setSynth] = useState<SpeechSynthesis>();
@@ -17,8 +18,6 @@ const SoundButton = ({ text }: { text: string }) => {
     synth.cancel();
 
     const utterThis = new SpeechSynthesisUtterance(text);
-    utterThis.lang = 'it-IT';
-    utterThis.rate = 0.8;
 
     utterThis.onboundary = (event) => {
       if (barRef.current) {
@@ -64,10 +63,15 @@ const SoundButton = ({ text }: { text: string }) => {
 
   useEffect(() => {
     if (utterance && synth) {
+      const languageCode = languageCodes.find((languageCode) => languageCode.name.includes(language))?.code;
+      const defaultVoice = synth.getVoices().filter((voice) => voice.lang.split('-')[0] === languageCode)[0];
+      utterance.lang = defaultVoice?.lang;
+      utterance.rate = speedPercent;
+
       loading.reset();
       handlePlay();
     }
-  }, [utterance, synth]);
+  }, [utterance, synth, language, speedPercent]);
 
   const handlePlay = () => {
     if ((synth as SpeechSynthesis).paused) {
