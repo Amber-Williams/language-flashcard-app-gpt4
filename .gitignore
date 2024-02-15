@@ -1,3 +1,4 @@
+# python
 __pycache__/
 notebooks/
 .DS_Store
@@ -5,8 +6,12 @@ notebooks/
 
 *.db
 
-# Front-end files
+# javascript
 dist/
 
-# Todo list
+# my local development todo list
 todo
+
+# environment variables
+.env
+**/.env
