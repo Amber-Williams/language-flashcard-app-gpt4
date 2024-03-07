@@ -1,0 +1,27 @@
+services:
+  backend:
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    volumes:
+      - ./api:/usr/src/app/api/:z
+      - datadb:/data/db
+    ports:
+      - "9124:9124"
+
+  frontend:
+    # restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8008:8008"
+    volumes:
+      - ./client:/usr/src/app/client/:z
+      - /usr/src/app/client/node_modules
+    environment:
+      - VITE_API_SERVER=http://localhost:9124
+
+volumes:
+  datadb:

@@ -48,6 +48,11 @@ const App = () => {
     setUsernameOnLoad();
   }, []);
 
+  // resets state on deck change
+  useEffect(() => {
+    resetState();
+  }, [JSON.stringify(wordsList)]);
+
   const cacheUsernameOnRequest = () => {
     if (!localStorage.getItem('username') && username) {
       localStorage.setItem('username', username);
@@ -59,7 +64,7 @@ const App = () => {
     cacheUsernameOnRequest();
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_SERVER}/api/cards/generate`, {
+      const response = await fetch(`${import.meta.env.VITE_API_SERVER}/api/card/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,9 +73,7 @@ const App = () => {
         body: JSON.stringify({ subject, language: learningLanguage }),
       });
       const data = await response.json();
-      setCurrentIndex(0);
-      setWordsList(data);
-      nextWord();
+      setWordsList(data.cards);
     } catch (error) {
       console.error('Error during fetch operation: ', error);
     } finally {
@@ -83,7 +86,7 @@ const App = () => {
     cacheUsernameOnRequest();
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_SERVER}/api/cards/review?username=${username}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_SERVER}/api/card/review?username=${username}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -95,9 +98,7 @@ const App = () => {
         return;
       }
 
-      setCurrentIndex(0);
-      setWordsList(data);
-      nextWord();
+      setWordsList(data.cards);
     } catch (error) {
       console.error('Error during fetch operation: ', error);
     } finally {
@@ -110,16 +111,14 @@ const App = () => {
     cacheUsernameOnRequest();
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_SERVER}/api/cards`, {
+      const response = await fetch(`${import.meta.env.VITE_API_SERVER}/api/card`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
       const data = await response.json();
-      setCurrentIndex(0);
-      setWordsList(data);
-      nextWord();
+      setWordsList(data.cards);
     } catch (error) {
       console.error('Error during fetch operation: ', error);
     } finally {
@@ -153,6 +152,11 @@ const App = () => {
     }
 
     setCurrentIndex(currentIndex + 1);
+  };
+
+  const resetState = () => {
+    setAnswered(false);
+    setCurrentIndex(0);
   };
 
   return (
@@ -379,9 +383,9 @@ const App = () => {
                   <SoundButton text={currentCard.word} language={learningLanguage} speedPercent={voiceSpeed / 100} />
                 </Core.Typography>
                 <Core.Stack direction="row" spacing={2}>
-                  {currentCard.options?.map((option) => (
+                  {currentCard.options?.map((option, index) => (
                     <Core.Button
-                      key={option}
+                      key={option + index}
                       sx={{
                         opacity: answered ? (option === currentCard.correct ? 1 : 0.5) : 1,
                       }}

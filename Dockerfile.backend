@@ -1,0 +1,36 @@
+# ---------------------------------------
+# Base image for redis
+FROM redis:7-bookworm as redis
+
+# ---------------------------------------
+# Runtime environment
+FROM python:3.11-slim-bookworm as release
+
+# Set ENV
+ENV TZ=Etc/UTC
+WORKDIR /usr/src/app
+
+# Copy artifacts
+COPY --from=redis /usr/local/bin/redis-server /usr/local/bin/redis-server
+COPY --from=redis /usr/local/bin/redis-cli /usr/local/bin/redis-cli
+COPY ./api /usr/src/app/api
+COPY deploy.sh /usr/src/app/deploy.sh
+COPY ricotta.env /usr/src/app/.env
+
+
+# Install api dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends dumb-init \
+    && pip install --no-cache-dir ./api \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* \
+    && chmod 755 /usr/src/app/deploy.sh \
+    && chmod 755 /usr/local/bin/redis-server \
+    && chmod 755 /usr/local/bin/redis-cli \
+    && mkdir -p /etc/redis \
+    && mkdir -p /data/db \
+    && echo "appendonly yes" >> /etc/redis/redis.conf \
+    && echo "dir /data/db/" >> /etc/redis/redis.conf
+
+EXPOSE 9124
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["/bin/bash", "-c", "/usr/src/app/deploy.sh"]

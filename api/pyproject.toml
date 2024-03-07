@@ -1,0 +1,81 @@
+[tool.poetry]
+name = "ricotta"
+version = "1.1.0"
+description = "A language learning app"
+license = "MIT"
+authors = ["Amber Williams <https://github.com/amber-williams>"]
+repository = "https://github.com/amber-williams/language-flashcard-app-gpt4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dependencies]
+python=">=3.11"
+asyncio = "^3.4.3"
+openai = "0.28.1"
+packaging = "^23.2"
+pydantic = "^1.10.14"
+sse-starlette = "^1.8.2"
+starlette = "^0.26.1"
+typing-extensions = "^4.10.0"
+urllib3 = "^2.2.1"
+fastapi = "^0.95.1"
+requests = "^2.31.0"
+loguru = "^0.7.2"
+redis = {extras = ["hiredis"], version = "^5.0.2"}
+pytest = "^8.0.2"
+hypercorn = {extras = ["trio"], version = "^0.16.0"}
+sqlalchemy = "^2.0.27"
+coloredlogs = "15.0.1"
+
+[tool.ruff]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
+select = ["E", "F"]
+ignore = []
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]
+unfixable = []
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+# Same as Black.
+line-length = 150
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Assume Python 3.11
+target-version = "py311"
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.ruff.mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+

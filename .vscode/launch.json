@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run api locally",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "src.ricotta.main:app",
+                "--reload"
+            ],
+            "cwd": "${workspaceFolder}/api",
+            "jinja": true,
+            "justMyCode": true,
+        }
+    ]
+}
