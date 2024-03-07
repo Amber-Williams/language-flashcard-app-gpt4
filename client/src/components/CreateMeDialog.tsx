@@ -21,7 +21,7 @@ export default function CreateMeDialog({ open, toggle, username }: IFormDialogPr
     event.preventDefault();
     setLoading(true);
     try {
-      await fetch(`${import.meta.env.VITE_API_SERVER}/api/users`, {
+      await fetch(`${import.meta.env.VITE_API_SERVER}/api/user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

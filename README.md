@@ -6,24 +6,29 @@ A Foreign Language Flashcard App built using Python and Langchain, enhanced with
   <img src="app-preview.gif">
 </div>
 
+## System prerequisites
+
+- `poetry`
+- `pnpm`
+- Python v3.11 or greater
+- Node v18 or greater
+
 ## Installation
 
-### Backend
-
-1. `poetry install`
+1. `cd api && poetry install`
 2. Add OpenAI API key is added to `config.py` and language of choice
+3. `cd client && pnpm install`
 
-### Frontend
+## Running the app locally
 
-1. cd `/client`
-2. `pnpm install`
+#### API service
 
-## Running the App
+`cd api && poetry run uvicorn src.ricotta.main:app --reload`
 
-### Run the backend
+#### Client web app
 
-`poetry run python app.py`
+`cd client && pnpm dev`
 
-### Run the frontend
+## Running the app in a container
 
-`pnpm dev`
+`docker compose up`

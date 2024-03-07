@@ -13,5 +13,6 @@ dist/
 todo
 
 # environment variables
+ricotta.env
 .env
 **/.env
