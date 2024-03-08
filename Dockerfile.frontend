@@ -1,6 +1,6 @@
 # ---------------------------------------
 # Build frontend
-FROM node:18-bookworm-slim as frontend2
+FROM node:18-bookworm-slim as frontend
 
 WORKDIR /usr/src/app/client
 
