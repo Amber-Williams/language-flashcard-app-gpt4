@@ -1,6 +1,7 @@
 services:
   backend:
     restart: on-failure
+    container_name: ricotta-backend
     build:
       context: .
       dockerfile: Dockerfile.backend
@@ -11,10 +12,9 @@ services:
       - "9124:9124"
 
   frontend:
-    # restart: on-failure
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
+    container_name: ricotta-frontend
+    restart: on-failure
+    image: registry.digitalocean.com/my-virtual-machine-registry/ricotta-frontend:latest
     ports:
       - "8008:8008"
     volumes:
