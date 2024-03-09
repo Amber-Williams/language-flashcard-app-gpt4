@@ -21,7 +21,7 @@ services:
       - ./client:/usr/src/app/client/:z
       - /usr/src/app/client/node_modules
     environment:
-      - VITE_API_SERVER=http://localhost:9124
+      - VITE_API_SERVER=https://ricotta-api.holeytriangle.com
 
 volumes:
   datadb:
