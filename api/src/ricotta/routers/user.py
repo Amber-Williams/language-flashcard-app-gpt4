@@ -19,7 +19,7 @@ class UserCreate(BaseModel):
     username: str
 
 
-@user_router.post("/user")
+@user_router.post("/")
 async def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
     try:
         new_user = User(username=user_data.username)
