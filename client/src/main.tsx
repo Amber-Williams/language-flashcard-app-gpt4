@@ -137,7 +137,7 @@ const App = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.error && data.error === 'User not found') {
+        if (data.detail && data.detail === 'User not found') {
           createMeDialog.toggle(true);
         } else {
           setAnswered(true);
