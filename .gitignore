@@ -16,3 +16,6 @@ todo
 ricotta.env
 .env
 **/.env
+
+# data files
+*.csv

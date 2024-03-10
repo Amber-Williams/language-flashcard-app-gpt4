@@ -1,0 +1,58 @@
+services:
+  ricotta-database:
+    container_name: ricotta-database
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_DB=mydb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5433:5432"
+    networks:
+      - backend
+
+  backend:
+    restart: on-failure
+    container_name: ricotta-backend
+    environment:
+      - DATABASE_URI=postgresql://myuser:mypassword@ricotta-database:5432/mydb
+      - RICOTTA_API_ENABLE_IPV4=true
+      - RICOTTA_API_ENABLE_IPV6=false
+      - ENVIRONMENT=development
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - ricotta-database
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    volumes:
+      - ./api:/usr/src/app/api/:z
+      - datadb:/data/db
+    ports:
+      - "9124:9124"
+    networks:
+      - backend
+
+  frontend:
+    container_name: ricotta-frontend
+    restart: on-failure
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "8008:8008"
+    volumes:
+      - ./client:/usr/src/app/client/:z
+      - /usr/src/app/client/node_modules
+    environment:
+      - VITE_API_SERVER=http://127.0.0.1:9124
+
+volumes:
+  postgres_data:
+  datadb:
+
+networks:
+  backend:
+    driver: bridge

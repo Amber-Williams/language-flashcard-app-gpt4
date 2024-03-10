@@ -1,14 +1,12 @@
-import os
-
 from sqlalchemy import (
     create_engine,
 )
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-DATABASE_URL = 'sqlite:///'+os.path.join(BASE_DIR, f'Italian.db')
+from ricotta.config import config
 
-engine = create_engine(DATABASE_URL, echo=True)
+
+engine = create_engine(config.database_uri, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

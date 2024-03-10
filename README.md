@@ -21,6 +21,10 @@ A Foreign Language Flashcard App built using Python and Langchain, enhanced with
 
 ## Running the app locally
 
+#### Database
+
+`docker compose -f docker-compose.database.yml up`
+
 #### API service
 
 `cd api && poetry run uvicorn src.ricotta.main:app --reload`
@@ -31,4 +35,4 @@ A Foreign Language Flashcard App built using Python and Langchain, enhanced with
 
 ## Running the app in a container
 
-`docker compose up`
+`docker compose -f docker-compose.dev.yml up`

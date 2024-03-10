@@ -15,7 +15,6 @@ COPY --from=redis /usr/local/bin/redis-server /usr/local/bin/redis-server
 COPY --from=redis /usr/local/bin/redis-cli /usr/local/bin/redis-cli
 COPY ./api /usr/src/app/api
 COPY deploy.sh /usr/src/app/deploy.sh
-COPY ricotta.env /usr/src/app/.env
 
 
 # Install api dependencies

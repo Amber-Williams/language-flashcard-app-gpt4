@@ -28,6 +28,7 @@ pytest = "^8.0.2"
 hypercorn = {extras = ["trio"], version = "^0.16.0"}
 sqlalchemy = "^2.0.27"
 coloredlogs = "15.0.1"
+psycopg2-binary = "^2.9.9"
 
 [tool.ruff]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.

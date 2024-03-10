@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     learning_language: str = "Italian"
     supported_languages: list = ["Italian"]
     cors_origins: list = None
-    database_uri: str = None
     default_language: str = supported_languages[0]
 
     class Config:
@@ -27,11 +26,19 @@ class Settings(BaseSettings):
             return ["holeytriangle.com"]
         elif self.environment == 'development':
             return "*"
+        elif self.environment == 'local':
+            return "*"
         else:
             return self.cors_origins
 
     @property
-    def configure_database_uri(self):
-        return 'sqlite:///' + os.path.join(BASE_DIR, f'{self.learning_language}.db')
+    def database_uri(self):
+        if self.environment == 'production':
+            return os.getenv('DATABASE_URI')
+        elif self.environment == 'development':
+            return os.getenv('DATABASE_URI')
+        elif self.environment == 'local':
+            return 'sqlite:///' + os.path.join(BASE_DIR, 'local.db')
+
 
 config = Settings()
