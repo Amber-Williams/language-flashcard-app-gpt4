@@ -6,7 +6,6 @@ WORKDIR /usr/src/app/client
 
 COPY ./client/package.json ./client/pnpm-lock.yaml ./
 COPY ./client /usr/src/app/client/
-COPY ricotta.env /usr/src/app/client/.env
 
 RUN npm install --only=production && npm cache clean --force
 RUN npm install --global typescript

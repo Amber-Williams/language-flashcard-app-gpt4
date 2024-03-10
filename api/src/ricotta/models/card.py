@@ -9,11 +9,11 @@ from sqlalchemy.orm import relationship
 from ricotta.services.database import Base
 
 class UserCardInteraction(Base):
-    __tablename__ = 'user_card_interactions'
+    __tablename__ = 'ricotta__user_card_interactions'
 
     id = Column(Integer, autoincrement=True, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
-    card_id = Column(Integer, ForeignKey('cards.id'))
+    user_id = Column(Integer, ForeignKey('ricotta__users.id'))
+    card_id = Column(Integer, ForeignKey('ricotta__cards.id'))
     times_seen = Column(Integer, default=0, nullable=False)
     times_correct = Column(Integer, default=0, nullable=False)
     user = relationship("User", back_populates="card_interactions")
@@ -21,7 +21,7 @@ class UserCardInteraction(Base):
 
 
 class Card(Base):
-    __tablename__ = 'cards'
+    __tablename__ = 'ricotta__cards'
 
     id = Column(Integer, autoincrement=True, primary_key=True)
     word = Column(String, nullable=False)
@@ -33,9 +33,9 @@ class Card(Base):
 
 
 class IncorrectOption(Base):
-    __tablename__ = 'incorrect_options'
+    __tablename__ = 'ricotta__incorrect_options'
     
     id = Column(Integer, autoincrement=True, primary_key=True)
     option = Column(String, nullable=False)
-    card_id = Column(Integer, ForeignKey('cards.id'))
+    card_id = Column(Integer, ForeignKey('ricotta__cards.id'))
     card = relationship("Card", back_populates="incorrect_options")

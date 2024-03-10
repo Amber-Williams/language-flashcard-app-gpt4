@@ -5,6 +5,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+    environment:
+      - DATABASE_URI=${DATABASE_URI}
+      - RICOTTA_API_ENABLE_IPV4=true
+      - RICOTTA_API_ENABLE_IPV6=false
+      - ENVIRONMENT=production
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ./api:/usr/src/app/api/:z
       - datadb:/data/db

@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -x
-source ricotta.env
 
 # Get CPU Architecture
 cpu_arch=$(uname -m)
