@@ -1,12 +1,9 @@
 import time
-import logging
 import random
 import string
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.routing import APIRoute
-from starlette.types import Message
 
 from ricotta.routers.ping import ping_router
 from ricotta.routers.user import user_router
@@ -15,26 +12,30 @@ from ricotta.services.database import create_db_and_tables
 from ricotta.config import config
 from ricotta.core.logger import logging
 
+
 logging.basicConfig(filename=config.log_file, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 app = FastAPI(
     title="Ricotta API",
-    version="0.0.1",
-    description="Ricotta is a language learning app integrated with AI to generate new content."
+    version="2.0.0",
+    description="Ricotta is a language learning app integrated with AI to generate new content.",
+    docs_url=config.docs_url,
+    openapi_url=None,
+    redoc_url=None,
     )
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=config.allow_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 app.include_router(ping_router)
 app.include_router(user_router)
 app.include_router(card_router)
 app.mount("/api", app)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[str(origin) for origin in config.allow_origins],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")

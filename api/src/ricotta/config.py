@@ -34,13 +34,22 @@ class Settings(BaseSettings):
     @property
     def allow_origins(self):
         if self.environment == 'production':
-            return ["holeytriangle.com"]
+            return ["https://ricotta.holeytriangle.com"]
         elif self.environment == 'development':
             return "*"
         elif self.environment == 'local':
             return "*"
         else:
             return self.cors_origins
+
+    @property
+    def docs_url(self):
+        if self.environment == 'production':
+            return None
+        elif self.environment == 'development':
+            return '/docs'
+        elif self.environment == 'local':
+            return '/docs'
 
     @property
     def database_uri(self):
