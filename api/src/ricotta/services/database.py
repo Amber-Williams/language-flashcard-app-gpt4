@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from ricotta.config import config
 
 
-engine = create_engine(config.database_uri, echo=True)
+engine = create_engine(config.database_uri, echo=config.debug)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

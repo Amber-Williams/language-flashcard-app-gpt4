@@ -7,6 +7,8 @@ import CreateMeDialog, { useCreateMeDialog } from './components/CreateMeDialog';
 import SoundButton from './components/SoundButton';
 import './main.css';
 
+const DEFAULT_VOICE_SPEED = 80;
+
 interface ICard {
   id: number;
   word: string;
@@ -18,16 +20,16 @@ interface ICard {
 }
 
 const App = () => {
-  const [currentIndex, setCurrentIndex] = React.useState(0);
-  const [answered, setAnswered] = React.useState(false);
+  const [currentIndex, setCurrentIndex] = React.useState<number>(0);
+  const [answered, setAnswered] = React.useState<boolean>(false);
   const [wordsList, setWordsList] = React.useState<ICard[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [subject, setSubject] = React.useState('');
+  const [loading, setLoading] = React.useState<boolean>(false);
+  const [error, setError] = React.useState<boolean>(false);
+  const [subject, setSubject] = React.useState<string>('');
   const [token, setToken] = React.useState<string>('');
   const [username, setUsername] = React.useState<string | null>(null);
-  const [themeMode, setThemeMode] = React.useState('dark');
-  const [learningLanguage] = React.useState('Italian');
-  const [voiceSpeed, setVoiceSpeed] = React.useState(80);
+  const [themeMode, setThemeMode] = React.useState<'dark' | 'light' | null>(null);
+  const [learningLanguage, setLearningLanguage] = React.useState<string | null>(null);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const createMeDialog = useCreateMeDialog();
@@ -35,18 +37,51 @@ const App = () => {
   const playBtn = document.getElementById('play-control-btn');
   const currentCard = wordsList[currentIndex];
 
-  const setUsernameOnLoad = () => {
+  const setCachedFieldsOnLoad = () => {
+    // Username
     if (localStorage.getItem('username')) {
       setUsername(localStorage.getItem('username'));
     } else {
       const _username = generate({ minLength: 3, maxLength: 5, exactly: 1, separator: '-', wordsPerString: 3 });
       setUsername(_username as string);
     }
+
+    // Theme
+    if (localStorage.getItem('theme') && ['dark', 'light'].includes(localStorage.getItem('theme') as string)) {
+      setThemeMode(localStorage.getItem('theme') as 'dark' | 'light');
+    } else {
+      setThemeMode('dark');
+    }
+
+    // Learning language
+    if (localStorage.getItem('language')) {
+      setLearningLanguage(localStorage.getItem('language') as string);
+    } else {
+      setLearningLanguage('Italian');
+    }
   };
 
   useEffect(() => {
-    setUsernameOnLoad();
+    setCachedFieldsOnLoad();
   }, []);
+
+  // store preferred theme in local storage
+  useEffect(() => {
+    if (!localStorage.getItem('theme') && themeMode) {
+      localStorage.setItem('theme', themeMode);
+    } else if (themeMode && themeMode !== localStorage.getItem('theme')) {
+      localStorage.setItem('theme', themeMode);
+    }
+  }, [themeMode]);
+
+  // store preferred learning language in local storage
+  useEffect(() => {
+    if (!localStorage.getItem('language') && learningLanguage) {
+      localStorage.setItem('language', learningLanguage);
+    } else if (learningLanguage && learningLanguage !== localStorage.getItem('language')) {
+      localStorage.setItem('language', learningLanguage);
+    }
+  }, [learningLanguage]);
 
   // resets state on deck change
   useEffect(() => {
@@ -61,6 +96,7 @@ const App = () => {
 
   async function fetchNewWords() {
     setLoading(true);
+    setError(false);
     cacheUsernameOnRequest();
 
     try {
@@ -74,8 +110,8 @@ const App = () => {
       });
       const data = await response.json();
       setWordsList(data.cards);
-    } catch (error) {
-      console.error('Error during fetch operation: ', error);
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -83,15 +119,19 @@ const App = () => {
 
   async function fetchSeenCards() {
     setLoading(true);
+    setError(false);
     cacheUsernameOnRequest();
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_SERVER}/api/card/review?username=${username}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${import.meta.env.VITE_API_SERVER}/api/card/review?username=${username}&language=${learningLanguage}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         },
-      });
+      );
       const data = await response.json();
       if (data.length === 0) {
         alert('No cards to review - try some random ones first!');
@@ -99,8 +139,8 @@ const App = () => {
       }
 
       setWordsList(data.cards);
-    } catch (error) {
-      console.error('Error during fetch operation: ', error);
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -108,10 +148,11 @@ const App = () => {
 
   async function fetchRandomCards() {
     setLoading(true);
+    setError(false);
     cacheUsernameOnRequest();
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_SERVER}/api/card`, {
+      const response = await fetch(`${import.meta.env.VITE_API_SERVER}/api/card?&language=${learningLanguage}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -119,8 +160,8 @@ const App = () => {
       });
       const data = await response.json();
       setWordsList(data.cards);
-    } catch (error) {
-      console.error('Error during fetch operation: ', error);
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -167,11 +208,11 @@ const App = () => {
           height: '100vh',
           width: '100vw',
           position: 'absolute',
-          backgroundColor: themeMode === 'dark' ? '#181212' : '#F8FAF6',
+          backgroundColor: themeMode === null ? 'dark' : themeMode === 'dark' ? '#181212' : '#F8FAF6',
           zIndex: 0,
         }}
       >
-        <Theme.Provider mode={themeMode as 'dark' | 'light'}>
+        <Theme.Provider mode={themeMode === null ? 'dark' : (themeMode as 'dark' | 'light')}>
           <Background.Surface>
             <Background.ContourMapSVG size={1000} />
           </Background.Surface>
@@ -251,42 +292,36 @@ const App = () => {
                 </Core.ToggleButtonGroup>
               </Core.Box>
             </Core.MenuItem>
-
-            {/* 
-            // TODO: temporarily removed due to keyevent listener in component preventing copy/pasting in form fields
             <Core.MenuItem>
-              <Core.Box width="100%">
-                <Core.Typography gutterBottom>Voice speed</Core.Typography>
-                <Core.Slider
-                  value={voiceSpeed}
-                  onChange={(_: Event, newValue: number) => {
-                    setVoiceSpeed(newValue);
-                  }}
-                  min={10}
-                  max={100}
-                  aria-labelledby="continuous-slider"
-                />
-              </Core.Box>
-            </Core.MenuItem> */}
-            {/* <Core.MenuItem>
               <Core.TextField
                 select
                 label="Language"
                 value={learningLanguage}
-                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setLearningLanguage(event.target.value)}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                  setLearningLanguage(event.target.value);
+                  setWordsList([]);
+                }}
                 SelectProps={{
                   native: true,
                 }}
                 sx={{
+                  mt: 1,
                   width: '100%',
                 }}
                 size="small"
               >
-                <option value="Italian">Italian</option>
-                <option value="Spanish">Spanish</option>
+                <option value="Arabic">Arabic</option>
                 <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Hindi">Hindi</option>
+                <option value="Italian">Italian</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Mandarin">Mandarin</option>
+                <option value="Portuguese">Portuguese</option>
+                <option value="Russian">Russian</option>
+                <option value="Spanish">Spanish</option>
               </Core.TextField>
-            </Core.MenuItem> */}
+            </Core.MenuItem>
           </Core.Menu>
 
           <Core.Container maxWidth="sm">
@@ -299,7 +334,7 @@ const App = () => {
               <Core.Grid container spacing={2}>
                 <Core.Grid xs={9} item>
                   <Core.TextField
-                    label="Learn words about..."
+                    label={'Learn words about...'}
                     variant="outlined"
                     fullWidth
                     size="small"
@@ -309,6 +344,20 @@ const App = () => {
                       opacity: token ? 1 : 0.5,
                     }}
                   />
+                  {!token && (
+                    <Core.Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', opacity: 0.5, mt: 1 }}>
+                      <Icons.Info
+                        fontSize="small"
+                        sx={{
+                          width: 15,
+                          mr: 1,
+                        }}
+                      />
+                      <Core.Typography variant="caption" component="p" align="left" small>
+                        Add OpenAI key to enable this feature
+                      </Core.Typography>
+                    </Core.Box>
+                  )}
                 </Core.Grid>
                 <Core.Grid xs={3} item>
                   <Core.Button
@@ -340,28 +389,12 @@ const App = () => {
                     onClick={fetchRandomCards}
                     disabled={loading}
                   >
-                    Random{' '}
-                    {loading && (
-                      <Core.CircularProgress
-                        size={15}
-                        sx={{
-                          ml: 2,
-                        }}
-                      />
-                    )}
+                    Random<span> </span> {loading && <Core.CircularProgress size={15} />}
                   </Core.Button>
                 </Core.Grid>
                 <Core.Grid xs={3} item>
                   <Core.Button variant="outlined" color="primary" fullWidth onClick={fetchSeenCards} disabled={loading}>
-                    Review{' '}
-                    {loading && (
-                      <Core.CircularProgress
-                        size={15}
-                        sx={{
-                          ml: 2,
-                        }}
-                      />
-                    )}
+                    Review<span> </span> {loading && <Core.CircularProgress size={15} />}
                   </Core.Button>
                 </Core.Grid>
               </Core.Grid>
@@ -378,10 +411,33 @@ const App = () => {
                   pt: 4,
                 }}
               >
-                <Core.Typography variant="h4" component="h1" gutterBottom align="center">
-                  {currentCard.word}{' '}
-                  <SoundButton text={currentCard.word} language={learningLanguage} speedPercent={voiceSpeed / 100} />
-                </Core.Typography>
+                <Core.Stack
+                  direction={learningLanguage === 'Arabic' ? 'row-reverse' : 'row'}
+                  useFlexGap
+                  flexWrap="wrap"
+                  justifyContent="center"
+                  alignItems="center"
+                >
+                  <Core.Typography
+                    variant="h5"
+                    component="h5"
+                    gutterBottom
+                    sx={{
+                      pl: learningLanguage === 'Arabic' ? 1 : 0,
+                      pr: learningLanguage === 'Arabic' ? 0 : 1,
+                    }}
+                  >
+                    {currentCard.word}
+                  </Core.Typography>
+                  {learningLanguage && (
+                    <SoundButton
+                      text={currentCard.word}
+                      language={learningLanguage}
+                      speedPercent={DEFAULT_VOICE_SPEED / 100}
+                    />
+                  )}
+                </Core.Stack>
+
                 <Core.Stack direction="row" spacing={2}>
                   {currentCard.options?.map((option, index) => (
                     <Core.Button
@@ -403,22 +459,30 @@ const App = () => {
                 <br />
                 {answered && (
                   <>
-                    <Core.Typography
-                      variant="h5"
-                      component="h5"
-                      gutterBottom
-                      align="center"
-                      sx={{
-                        my: 2,
-                      }}
+                    <Core.Stack
+                      direction={learningLanguage === 'Arabic' ? 'row-reverse' : 'row'}
+                      useFlexGap
+                      flexWrap="wrap"
+                      justifyContent="center"
+                      alignItems="center"
                     >
-                      {currentCard.sentenceLANG}{' '}
+                      <Core.Typography
+                        variant="h5"
+                        component="h5"
+                        gutterBottom
+                        sx={{
+                          pl: learningLanguage === 'Arabic' ? 1 : 0,
+                          pr: learningLanguage === 'Arabic' ? 0 : 1,
+                        }}
+                      >
+                        {currentCard.sentenceLANG}
+                      </Core.Typography>
                       <SoundButton
                         text={currentCard.sentenceLANG}
-                        language={learningLanguage}
-                        speedPercent={voiceSpeed / 100}
+                        language={learningLanguage as string}
+                        speedPercent={DEFAULT_VOICE_SPEED / 100}
                       />
-                    </Core.Typography>
+                    </Core.Stack>
                     <Core.Divider variant="middle" />
                     <Core.Typography
                       variant="h5"
@@ -472,6 +536,14 @@ const App = () => {
               </Card>
             </Core.Container>
           )}
+          {error && (
+            <Core.Container maxWidth="sm" sx={{ mt: 3 }}>
+              <Core.Alert variant="outlined" severity="error" sx={{ bgcolor: '#f4433640', borderColor: '#f44336' }}>
+                Oops, something went wrong. Please refresh the page and try again.
+              </Core.Alert>
+            </Core.Container>
+          )}
+
           <CreateMeDialog open={createMeDialog.open} toggle={createMeDialog.toggle} username={username ?? ''} />
         </Theme.Provider>
       </div>

@@ -7,13 +7,24 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 class Settings(BaseSettings):
-    environment: str = os.getenv('ENVIRONMENT', 'development')
+    environment: str = os.getenv('ENVIRONMENT', 'local')
     debug: bool = False
+    log_file: str = os.getenv('LOG_FILE', 'ricotta.log')
     testing: bool = False
     openai_api_key: str = os.getenv('OPENAI_API_KEY')
     openai_model: str = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo-1106')
     learning_language: str = "Italian"
-    supported_languages: list = ["Italian"]
+    supported_languages: list = ["Arabic",
+                                 "French",
+                                 "German",
+                                 "Hindi",
+                                 "Italian",
+                                 "Japanese",
+                                 "Mandarin",
+                                 "Portuguese",
+                                 "Russian",
+                                 "Spanish"
+                                 ]
     cors_origins: list = None
     default_language: str = supported_languages[0]
 

@@ -21,7 +21,7 @@ services:
       - RICOTTA_API_ENABLE_IPV4=true
       - RICOTTA_API_ENABLE_IPV6=false
       - ENVIRONMENT=development
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=sk-1234567890
     depends_on:
       - ricotta-database
     build:
@@ -47,7 +47,7 @@ services:
       - ./client:/usr/src/app/client/:z
       - /usr/src/app/client/node_modules
     environment:
-      - VITE_API_SERVER=http://127.0.0.1:9124
+      - VITE_API_SERVER=http://localhost:9124
 
 volumes:
   postgres_data:

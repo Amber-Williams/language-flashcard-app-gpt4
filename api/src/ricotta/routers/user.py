@@ -6,8 +6,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ricotta.models.user import User
 from ricotta.services.database import get_db
+from ricotta.core.logger import logging
 
 from fastapi import APIRouter
+
+logger = logging.getLogger(__name__)
 
 user_router = APIRouter(
     prefix="/user",
@@ -26,10 +29,10 @@ async def create_user(user_data: UserCreate, db: Session = Depends(get_db)):
         db.add(new_user)
         db.commit()
         return JSONResponse(content={"message": "User created successfully", "username": new_user.username}, status_code=200)
-    except SQLAlchemyError as e:
-        print(e)
+    except SQLAlchemyError as err:
         db.rollback()
-        # TODO: handle already existing user
+        logging.error(f"Error creating user: {err}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as err:
+        logging.error(f"Unexpected {err=}, {type(err)=}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
