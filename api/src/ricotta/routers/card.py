@@ -42,7 +42,7 @@ class MarkCardSeenRequest(BaseModel):
 @card_router.post("/generate")
 def generate_cards(request: Request, payload: GenerateCardsRequest, db: Session = Depends(get_db)):
     try:
-        subject = "".join(ch for ch in payload.subject if ch.isalnum())
+        subject = "".join(ch for ch in payload.subject if ch.isalnum() or ch.isspace())
         language = payload.language or config.default_language
 
         request.app.extra = {
@@ -72,16 +72,25 @@ def generate_cards(request: Request, payload: GenerateCardsRequest, db: Session 
         words = words.get("words", words)
         cards = []
         for word in words:
-            db_card = Card(
-                word=word['word'],
-                language=language,
-                english=word['english'],
-                sentenceLANG=word['sentenceLANG'],
-                sentenceEN=word['sentenceEN'],
-                incorrect_options=[IncorrectOption(option=option) for option in word['incorrect_options']]
-            )
-            db.add(db_card)
-            db.commit()
+            prexisting_card = db.query(Card).filter(
+                 and_(Card.sentenceLANG == word['sentenceLANG'],
+                      Card.language == language)
+                ).one_or_none()
+            db_card = prexisting_card
+
+            if not db_card:
+                db_card = Card(
+                    word=word['word'],
+                    language=language,
+                    english=word['english'],
+                    sentenceLANG=word['sentenceLANG'],
+                    sentenceEN=word['sentenceEN'],
+                    incorrect_options=[IncorrectOption(option=option) for option in word['incorrect_options']]
+                )
+                db.add(db_card)
+                db.commit()
+            else:
+                logger.warning(f"Card already exists: {db_card.id}")
 
             options = [word['english']] + [incorrect_option.option for incorrect_option in db_card.incorrect_options]
             shuffle(options)
