@@ -183,5 +183,6 @@
   { "code": "yo", "name": "Yoruba" },
   { "code": "za", "name": "Zhuang; Chuang" },
   { "code": "zh", "name": "Chinese" },
+  { "code": "zh", "name": "Mandarin" },
   { "code": "zu", "name": "Zulu" }
 ]

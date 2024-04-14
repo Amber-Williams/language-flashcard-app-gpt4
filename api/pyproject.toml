@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ricotta"
-version = "1.1.0"
+version = "2.0.0"
 description = "A language learning app"
 license = "MIT"
 authors = ["Amber Williams <https://github.com/amber-williams>"]
@@ -22,7 +22,6 @@ typing-extensions = "^4.10.0"
 urllib3 = "^2.2.1"
 fastapi = "^0.95.1"
 requests = "^2.31.0"
-loguru = "^0.7.2"
 redis = {extras = ["hiredis"], version = "^5.0.2"}
 pytest = "^8.0.2"
 hypercorn = {extras = ["trio"], version = "^0.16.0"}

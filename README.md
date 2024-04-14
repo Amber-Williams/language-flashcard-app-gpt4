@@ -17,7 +17,8 @@ A Foreign Language Flashcard App built using Python and Langchain, enhanced with
 
 1. `cd api && poetry install`
 2. Add OpenAI API key is added to `config.py` and language of choice
-3. `cd client && pnpm install`
+3. Copy `/client/.env.example` to a `.env` file
+4. `cd client && pnpm install`
 
 ## Running the app locally
 

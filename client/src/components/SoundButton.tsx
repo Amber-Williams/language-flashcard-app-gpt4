@@ -64,9 +64,28 @@ const SoundButton = ({ text, language, speedPercent }: { text: string; language:
   useEffect(() => {
     if (utterance && synth) {
       const languageCode = languageCodes.find((languageCode) => languageCode.name.includes(language))?.code;
-      const defaultVoice = synth.getVoices().filter((voice) => voice.lang.split('-')[0] === languageCode)[0];
-      utterance.lang = defaultVoice?.lang;
+      const voices = synth.getVoices();
+
       utterance.rate = speedPercent;
+
+      // Spanish voices are pretty bad with an exception of Google español and Paulina
+      if (language === 'Spanish') {
+        utterance.voice = voices.filter((voice) => voice.name === 'Paulina')[0];
+      } else if (language === 'French') {
+        utterance.voice = voices.filter((voice) => voice.name === 'Thomas')[0];
+      } else if (language === 'German') {
+        utterance.voice = voices.filter((voice) => voice.name === 'Google Deutsch')[0];
+        utterance.rate = 1;
+      } else if (language === 'Mandarin') {
+        utterance.voice = voices.filter((voice) => voice.name === 'Tingting')[0];
+      } else if (language === 'Portuguese') {
+        utterance.voice = voices.filter((voice) => voice.name === 'Joana')[0];
+      } else if (language === 'Japanese') {
+        utterance.voice = voices.filter((voice) => voice.name === 'O-Ren')[0];
+        utterance.rate = 1;
+      } else {
+        utterance.voice = voices.filter((voice) => voice.lang.split('-')[0] === languageCode)[0];
+      }
 
       loading.reset();
       handlePlay();

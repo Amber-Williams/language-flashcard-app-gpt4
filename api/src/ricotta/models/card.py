@@ -25,6 +25,7 @@ class Card(Base):
 
     id = Column(Integer, autoincrement=True, primary_key=True)
     word = Column(String, nullable=False)
+    language = Column(String, nullable=False)
     english = Column(String, nullable=False)
     sentenceLANG = Column(String, nullable=False, unique=True)
     sentenceEN = Column(String, nullable=False)
