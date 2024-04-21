@@ -110,7 +110,7 @@ def generate_cards(request: Request, payload: GenerateCardsRequest, db: Session 
     except Exception as err:
         db.rollback()
         logging.error(f"Unexpected error: {err}")
-        return HTTPException(status_code=500, detail="An unexpected error occurred")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
 @card_router.get('/')
@@ -145,10 +145,10 @@ def get_cards(language: Annotated[str, None] = None, db: Session = Depends(get_d
         return JSONResponse(content={'cards': cards}, status_code=200)
     except json.decoder.JSONDecodeError:
         logging.error("Couldn't parse JSON from model response")
-        return HTTPException(status_code=500, detail="An unexpected error occurred")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
     except Exception as err:
         logging.error(f"Unexpected {err=}, {type(err)=}")
-        return HTTPException(status_code=500, detail="An unexpected error occurred")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
 @card_router.get('/review')
@@ -156,7 +156,7 @@ def review_cards(username: Annotated[str, None] = None, language: Annotated[str,
     try:
         if not username:
             logging.error("Missing username")
-            return HTTPException(status_code=400, detail="Missing username")
+            raise HTTPException(status_code=400, detail="Missing username")
         user = db.query(User).filter(User.username == username).first()
         if not user:
             return JSONResponse(content={"cards": []}, status_code=200)
@@ -169,8 +169,7 @@ def review_cards(username: Annotated[str, None] = None, language: Annotated[str,
         interactions = db.query(UserCardInteraction)\
             .options(joinedload(UserCardInteraction.card))\
             .filter(
-                and_(UserCardInteraction.user_id == user.id,
-                     UserCardInteraction.card.language == language)
+                and_(UserCardInteraction.user_id == user.id)
             ).all()
 
         if not interactions:
@@ -178,6 +177,8 @@ def review_cards(username: Annotated[str, None] = None, language: Annotated[str,
         cards = []
         for interaction in interactions:
             orm_card = interaction.card
+            if orm_card.language != language:
+                continue
             options = [orm_card.english] + [incorrect_option.option for incorrect_option in orm_card.incorrect_options]
             shuffle(options)
             card = {
@@ -195,12 +196,11 @@ def review_cards(username: Annotated[str, None] = None, language: Annotated[str,
         shuffle(cards)
         return JSONResponse(content={'cards': cards}, status_code=200)
     except json.decoder.JSONDecodeError:
-        # TODO: Log error & use error exeptions
         logging.error("Couldn't parse JSON from model response")
-        return HTTPException(status_code=500, detail="An unexpected error occurred")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
     except Exception as err:
         logging.error(f"Unexpected {err=}, {type(err)=}")
-        return HTTPException(status_code=500, detail="An unexpected error occurred")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
 @card_router.post("/{card_id}")
@@ -208,17 +208,17 @@ def mark_card_as_seen(card_id: int, payload: MarkCardSeenRequest, db: Session = 
     try:
         if not card_id:
             logging.error("Missing card id")
-            return HTTPException(status_code=400, detail="Missing card id")
+            raise HTTPException(status_code=400, detail="Missing card id")
 
         user = db.query(User).filter(User.username == payload.username).first()
         if not user:
             logging.error(f"User not found: {payload.username}")
-            return HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="User not found")
 
         card = db.query(Card).filter(Card.id == card_id).first()
         if not card:
             logging.error(f"Card not found: {card_id}")
-            return HTTPException(status_code=404, detail="Card not found")
+            raise HTTPException(status_code=404, detail="Card not found")
 
         try:
             interaction = db.query(UserCardInteraction)\
@@ -237,4 +237,4 @@ def mark_card_as_seen(card_id: int, payload: MarkCardSeenRequest, db: Session = 
     except Exception as e:
         db.rollback()
         logging.error(f"Unexpected error: {e}")
-        return HTTPException(status_code=500, detail="An unexpected error occurred")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
