@@ -94,7 +94,7 @@ const App = () => {
     }
   };
 
-  async function fetchNewWords() {
+  const fetchNewWords = async () => {
     setLoading(true);
     setError(false);
     cacheUsernameOnRequest();
@@ -108,16 +108,20 @@ const App = () => {
         },
         body: JSON.stringify({ subject, language: learningLanguage }),
       });
-      const data = await response.json();
-      setWordsList(data.cards);
+      if (response.status === 200) {
+        const data = await response.json();
+        setWordsList(data.cards);
+      } else {
+        throw new Error('Error fetching new words');
+      }
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function fetchSeenCards() {
+  const fetchSeenCards = async () => {
     setLoading(true);
     setError(false);
     cacheUsernameOnRequest();
@@ -132,21 +136,25 @@ const App = () => {
           },
         },
       );
-      const data = await response.json();
-      if (data.length === 0) {
-        alert('No cards to review - try some random ones first!');
-        return;
-      }
+      if (response.status === 200) {
+        const data = await response.json();
+        if (data.cards.length === 0) {
+          alert('No cards to review - try some random ones first!');
+          return;
+        }
 
-      setWordsList(data.cards);
+        setWordsList(data.cards);
+      } else {
+        throw new Error('Error fetching seen cards');
+      }
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function fetchRandomCards() {
+  const fetchRandomCards = async () => {
     setLoading(true);
     setError(false);
     cacheUsernameOnRequest();
@@ -158,16 +166,21 @@ const App = () => {
           'Content-Type': 'application/json',
         },
       });
-      const data = await response.json();
-      setWordsList(data.cards);
+      if (response.status === 200) {
+        const data = await response.json();
+        setWordsList(data.cards);
+      } else {
+        throw new Error('Error fetching random cards');
+      }
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function postCardSeen(cardId: number, correct: boolean) {
+  const postCardSeen = async (cardId: number, correct: boolean) => {
+    setError(false);
     cacheUsernameOnRequest();
     fetch(`${import.meta.env.VITE_API_SERVER}/api/card/${cardId}`, {
       method: 'POST',
@@ -176,15 +189,24 @@ const App = () => {
       },
       body: JSON.stringify({ username, correct }),
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (res.status === 200) {
+          return res.json();
+        } else {
+          throw new Error('Error posting card seen');
+        }
+      })
       .then((data) => {
         if (data.detail && data.detail === 'User not found') {
           createMeDialog.toggle(true);
         } else {
           setAnswered(true);
         }
+      })
+      .catch(() => {
+        setError(true);
       });
-  }
+  };
 
   const nextWord = () => {
     setAnswered(false);
