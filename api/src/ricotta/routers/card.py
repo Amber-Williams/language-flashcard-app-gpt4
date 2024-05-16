@@ -2,8 +2,7 @@
 import json
 from typing import Annotated
 from random import shuffle
-from datetime import datetime, timezone
-import pytz
+from datetime import datetime, timezone, UTC
 
 from fastapi import HTTPException, Depends, Request, APIRouter
 from fastapi.responses import JSONResponse
@@ -259,7 +258,7 @@ def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Sessio
                 .one()
             
             # TODO: algo updated to work with the correctness of the answer
-            card_interaction.last_review = card_interaction.last_review.replace(tzinfo=pytz.UTC)
+            card_interaction.last_review = card_interaction.last_review.replace(tzinfo=UTC)
             fsrs_scheduling_cards = fsrs.repeat(card_interaction.to_fsrs_card(), now)
             new_card_interaction = fsrs_scheduling_cards[payload.rating].card.to_dict()
             new_card_interaction["rating"] = fsrs_scheduling_cards[payload.rating].review_log.rating.value
@@ -285,7 +284,7 @@ def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Sessio
                                                    lapses=card_interaction.lapses,
                                                    state=card_interaction.state,
                                                    rating=payload.rating,
-                                                   last_review=now.replace(tzinfo=pytz.UTC),
+                                                   last_review=now.replace(tzinfo=UTC),
                                                    user_id=user.id,
                                                    card_id=card.id,
                                                   )
