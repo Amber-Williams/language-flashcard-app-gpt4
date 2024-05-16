@@ -16,8 +16,20 @@ interface ICard {
   options: string[];
   sentenceLANG: string;
   sentenceEN: string;
-  times_seen?: number;
 }
+
+const SmileyRatingMapper = {
+  // 1: '😢'
+  1: 1,
+  // 2: '😞
+  2: 1,
+  // 3: '😐,
+  3: 2,
+  // 4: '😊',
+  4: 3,
+  // 5: '😄',
+  5: 4,
+};
 
 const App = () => {
   const [currentIndex, setCurrentIndex] = React.useState<number>(0);
@@ -139,7 +151,7 @@ const App = () => {
       if (response.status === 200) {
         const data = await response.json();
         if (data.cards.length === 0) {
-          alert('No cards to review - try some random ones first!');
+          alert('No cards to review right now - try some random ones!');
           return;
         }
 
@@ -160,12 +172,15 @@ const App = () => {
     cacheUsernameOnRequest();
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_SERVER}/api/card?&language=${learningLanguage}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${import.meta.env.VITE_API_SERVER}/api/card?username=${username}&language=${learningLanguage}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         },
-      });
+      );
       if (response.status === 200) {
         const data = await response.json();
         setWordsList(data.cards);
@@ -179,7 +194,7 @@ const App = () => {
     }
   };
 
-  const postCardSeen = async (cardId: number, correct: boolean) => {
+  const postCardSeen = async (cardId: number, correct: boolean, rating: number) => {
     setError(false);
     cacheUsernameOnRequest();
     fetch(`${import.meta.env.VITE_API_SERVER}/api/card/${cardId}`, {
@@ -187,7 +202,11 @@ const App = () => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ username, correct }),
+      body: JSON.stringify({
+        username,
+        correct,
+        rating: SmileyRatingMapper[rating as keyof typeof SmileyRatingMapper],
+      }),
     })
       .then((res) => {
         return res.json();
@@ -195,9 +214,9 @@ const App = () => {
       .then((data) => {
         if (data.detail && data.detail === 'User not found') {
           createMeDialog.toggle(true);
-        } else {
-          setAnswered(true);
+          return;
         }
+        nextWord();
       })
       .catch(() => {
         setError(true);
@@ -484,7 +503,7 @@ const App = () => {
                       variant={answered ? (option === currentCard.correct ? 'contained' : 'outlined') : 'outlined'}
                       color={answered ? (option === currentCard.correct ? 'success' : 'error') : 'primary'}
                       fullWidth
-                      onClick={() => postCardSeen(currentCard.id, option === currentCard.correct)}
+                      onClick={() => setAnswered(true)}
                       disableRipple={answered}
                       disableTouchRipple={answered}
                     >
@@ -545,7 +564,7 @@ const App = () => {
                     >
                       <Core.Typography gutterBottom>How was your memory for that?</Core.Typography>
                       <SmileyRating
-                        onChange={nextWord}
+                        onChange={(_: unknown, numSmiley: number) => postCardSeen(currentCard.id, true, numSmiley)}
                         style={{
                           transform: 'scale(1.5)',
                           paddingRight: '10px',

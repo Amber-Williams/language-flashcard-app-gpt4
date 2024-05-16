@@ -13,4 +13,5 @@ class User(Base):
 
     id = Column(Integer, autoincrement=True, primary_key=True)
     username = Column(String, nullable=False, unique=True)
+
     card_interactions = relationship(UserCardInteraction, back_populates="user")

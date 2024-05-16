@@ -2,22 +2,22 @@
 import json
 from typing import Annotated
 from random import shuffle
+from datetime import datetime, timezone
+import pytz
 
-from fastapi import HTTPException, Depends, Request
+from fastapi import HTTPException, Depends, Request, APIRouter
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
 from sqlalchemy.orm.exc import NoResultFound
 from pydantic import BaseModel
-from fastapi import APIRouter
-from sqlalchemy.sql.expression import func
 from sqlalchemy import (
-    and_
+    and_, func
 )
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, Session
+from fsrs import FSRS, Card as FSRSCard, State as FSRSStateEnum, Rating as FSRSRatingEnum
 
 from ricotta.models.user import User
 from ricotta.models.card import Card, IncorrectOption, UserCardInteraction
+from ricotta.models.query import Query
 from ricotta.config import config
 from ricotta.services.database import get_db
 from ricotta.services.chat_extractor import ChatExtractor
@@ -34,9 +34,11 @@ class GenerateCardsRequest(BaseModel):
     subject: str
     language: str
 
+
 class MarkCardSeenRequest(BaseModel):
     username: str
     correct: bool
+    rating: FSRSRatingEnum
 
 
 @card_router.post("/generate")
@@ -59,12 +61,16 @@ def generate_cards(request: Request, payload: GenerateCardsRequest, db: Session 
             logging.error("OpenAI API key is required to generate new words")
             raise HTTPException(status_code=400, detail="OpenAI API key is required to generate new words")
 
+        # Save the query to the database
+        subject_query = Query(query=subject)
+        db.add(subject_query)
+
+        # Include query, user context in prompt and ask for new words
         chat = ChatExtractor(
             model_key=openai_api_key,
             model=config.openai_model,
             max_tokens=None
         )
-
         words_known = db.query(Card.word).filter(Card.language == language).limit(100).all()
         db_words_str = json.dumps([orm_card.word for orm_card in words_known])
 
@@ -116,15 +122,35 @@ def generate_cards(request: Request, payload: GenerateCardsRequest, db: Session 
 
 
 @card_router.get('/')
-def get_cards(language: Annotated[str, None] = None, db: Session = Depends(get_db)):
+def get_cards(username: Annotated[str, None] = None, language: Annotated[str, None] = None, db: Session = Depends(get_db)):
     try:
+        orm_cards = None
+        cards = []
+
+        if not username:
+            logging.error("Missing username")
+            raise HTTPException(status_code=400, detail="Missing username")
+
         language = language or config.default_language
         if language not in config.supported_languages:
             logging.error(f"Invalid language: {language}")
             raise HTTPException(status_code=400, detail="Invalid language")
 
-        cards = []
-        orm_cards = db.query(Card).filter(Card.language == language).order_by(func.random()).limit(10).all()
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            orm_cards = db.query(Card)\
+                .filter(Card.language == language)\
+                .order_by(func.random())\
+                .limit(10)\
+                .all()
+        else:
+            interacted_card_ids = [interaction.card_id for interaction in user.card_interactions]
+            orm_cards = db.query(Card)\
+                .filter(Card.language == language)\
+                .filter(~Card.id.in_(interacted_card_ids))\
+                .order_by(func.random())\
+                .limit(10)\
+                .all()
 
         if not orm_cards or len(orm_cards) == 0:
             return JSONResponse(content={"cards": []}, status_code=200)
@@ -173,7 +199,8 @@ def review_cards(username: Annotated[str, None] = None, language: Annotated[str,
         interactions = db.query(UserCardInteraction)\
             .options(joinedload(UserCardInteraction.card))\
             .filter(
-                and_(UserCardInteraction.user_id == user.id)
+                and_(UserCardInteraction.user_id == user.id,
+                     UserCardInteraction.due <= func.now())
             ).all()
 
         if not interactions:
@@ -192,8 +219,6 @@ def review_cards(username: Annotated[str, None] = None, language: Annotated[str,
                 "correct": orm_card.english,
                 "sentenceLANG": orm_card.sentenceLANG,
                 "sentenceEN": orm_card.sentenceEN,
-                "times_seen": interaction.times_seen,
-                "times_correct": interaction.times_correct,
                 "options": options
             }
             cards.append(card)
@@ -210,7 +235,7 @@ def review_cards(username: Annotated[str, None] = None, language: Annotated[str,
 
 
 @card_router.post("/{card_id}")
-def mark_card_as_seen(card_id: int, payload: MarkCardSeenRequest, db: Session = Depends(get_db)):
+def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Session = Depends(get_db)):
     try:
         if not card_id:
             logging.error("Missing card id")
@@ -225,21 +250,48 @@ def mark_card_as_seen(card_id: int, payload: MarkCardSeenRequest, db: Session = 
         if not card:
             logging.error(f"Card not found: {card_id}")
             raise HTTPException(status_code=404, detail="Card not found")
-
+        fsrs = FSRS()
+        now = datetime.now(timezone.utc)
         try:
-            interaction = db.query(UserCardInteraction)\
-                .filter(and_(UserCardInteraction.user_id == user.id, UserCardInteraction.card_id == card.id))\
+            card_interaction = db.query(UserCardInteraction)\
+                .filter(and_(UserCardInteraction.user_id == user.id,
+                             UserCardInteraction.card_id == card_id))\
                 .one()
-            interaction.times_seen += 1
-            if payload.correct:
-                interaction.times_correct += 1
+            
+            # TODO: algo updated to work with the correctness of the answer
+            card_interaction.last_review = card_interaction.last_review.replace(tzinfo=pytz.UTC)
+            fsrs_scheduling_cards = fsrs.repeat(card_interaction.to_fsrs_card(), now)
+            new_card_interaction = fsrs_scheduling_cards[payload.rating].card.to_dict()
+            new_card_interaction["rating"] = fsrs_scheduling_cards[payload.rating].review_log.rating.value
+            new_card_interaction["state"] = new_card_interaction["state"].value
+            new_card_interaction["last_review"] = datetime.fromisoformat(new_card_interaction['last_review'])
+            new_card_interaction["due"] = datetime.fromisoformat(new_card_interaction['due'])
+
+            for key, value in new_card_interaction.items():
+                setattr(card_interaction, key, value)
+
+            db.commit()
 
         except NoResultFound:
-            interaction = UserCardInteraction(user_id=user.id, card_id=card.id, times_seen=1, times_correct=payload.correct and 1 or 0)
-            db.add(interaction)
-
-        db.commit()
-        return JSONResponse(content={"message": "Card marked as seen", "times_seen": interaction.times_seen, "times_correct": interaction.times_correct}, status_code=200)
+            card_interaction = FSRSCard(
+                state=FSRSStateEnum.Learning.value
+            )
+            card_interaction = UserCardInteraction(due=card_interaction.due,
+                                                   stability=card_interaction.stability,
+                                                   difficulty=card_interaction.difficulty,
+                                                   elapsed_days=card_interaction.elapsed_days,
+                                                   scheduled_days=card_interaction.scheduled_days,
+                                                   reps=card_interaction.reps,
+                                                   lapses=card_interaction.lapses,
+                                                   state=card_interaction.state,
+                                                   rating=payload.rating,
+                                                   last_review=now.replace(tzinfo=pytz.UTC),
+                                                   user_id=user.id,
+                                                   card_id=card.id,
+                                                  )
+            db.add(card_interaction)
+            db.commit()
+        return JSONResponse(content={"message": "Success"}, status_code=200)
     except HTTPException as e:
         raise e
     except Exception as e:
