@@ -6,31 +6,19 @@ import languageCodes from './../data/language-codes.json';
 const SoundButton = ({ text, language, speedPercent }: { text: string; language: string; speedPercent: number }) => {
   const theme = Theme.useTheme();
   const [utterance, setUtterance] = useState<SpeechSynthesisUtterance>();
-  const [synth, setSynth] = useState<SpeechSynthesis>();
-  const btnRef = useRef<SVGSVGElement>(null);
   const barRef = useRef<SVGPathElement>(null);
   const playRef = useRef<SVGPathElement>(null);
   const pauseRef = useRef<SVGPathElement>(null);
   const isMultiWord = text.split(' ').length > 1;
 
   useEffect(() => {
-    const synth = window.speechSynthesis;
-    synth.cancel();
-
     const utterThis = new SpeechSynthesisUtterance(text);
 
     utterThis.onboundary = (event) => {
       if (barRef.current) {
-        if (pauseRef.current?.getAttribute('display') === 'none') {
-          playRef.current?.setAttribute('display', 'none');
-          pauseRef.current?.setAttribute('display', 'block');
-        }
-
+        playButtonStates.showPause();
         if (isMultiWord) {
-          const totalLength = barRef.current.getTotalLength();
-          const totalTextLength = text.split('').length;
-          const calc = totalLength - (event.charIndex / totalTextLength) * totalLength;
-          barRef.current.setAttribute('stroke-dashoffset', calc.toString());
+          playButtonStates.loadTo(event.charIndex);
         }
       }
     };
@@ -38,90 +26,112 @@ const SoundButton = ({ text, language, speedPercent }: { text: string; language:
     utterThis.onend = function () {
       if (barRef.current) {
         if (isMultiWord) {
-          barRef.current.setAttribute('stroke-dashoffset', '0');
+          playButtonStates.loadTo(undefined);
         }
 
         setTimeout(() => {
-          if (!synth.speaking && barRef.current) {
-            if (playRef.current?.getAttribute('display') === 'none') {
-              playRef.current?.setAttribute('display', 'block');
-              pauseRef.current?.setAttribute('display', 'none');
-            }
-            loading.reset();
+          if (!window.speechSynthesis.speaking && barRef.current) {
+            playButtonStates.showPlay();
           }
         }, 300);
       }
     };
 
-    setSynth(synth);
     setUtterance(utterThis);
+    playButtonStates.showPlay();
 
     return () => {
-      synth.cancel();
+      window.speechSynthesis.cancel();
     };
   }, [text]);
 
   useEffect(() => {
-    if (utterance && synth) {
-      const languageCode = languageCodes.find((languageCode) => languageCode.name.includes(language))?.code;
-      const voices = synth.getVoices();
+    handleLanguageChange(language);
+  }, [window.speechSynthesis?.getVoices()]);
+
+  useEffect(() => {
+    handlePlay();
+  });
+
+  const handlePlay = () => {
+    if (utterance && window.speechSynthesis && window.speechSynthesis.getVoices()) {
+      playButtonStates.showPlay();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      } else {
+        window.speechSynthesis.speak(utterance as SpeechSynthesisUtterance);
+      }
+    }
+  };
+
+  const handleClick = () => {
+    if (window.speechSynthesis?.speaking && !window.speechSynthesis?.paused) {
+      window.speechSynthesis.pause();
+    } else {
+      handlePlay();
+    }
+  };
+
+  const handleLanguageChange = (_language: string) => {
+    if (utterance && window.speechSynthesis) {
+      const languageCode = languageCodes.find((languageCode) => languageCode.name.includes(_language))?.code;
+      const voices = window.speechSynthesis.getVoices();
 
       utterance.rate = speedPercent;
 
       // Spanish voices are pretty bad with an exception of Google español and Paulina
-      if (language === 'Spanish') {
+      if (_language === 'Spanish') {
         utterance.voice = voices.filter((voice) => voice.name === 'Paulina')[0];
-      } else if (language === 'French') {
+      } else if (_language === 'French') {
         utterance.voice = voices.filter((voice) => voice.name === 'Thomas')[0];
-      } else if (language === 'German') {
+      } else if (_language === 'German') {
         utterance.voice = voices.filter((voice) => voice.name === 'Google Deutsch')[0];
         utterance.rate = 1;
-      } else if (language === 'Mandarin') {
+      } else if (_language === 'Mandarin') {
         utterance.voice = voices.filter((voice) => voice.name === 'Tingting')[0];
-      } else if (language === 'Portuguese') {
+      } else if (_language === 'Portuguese') {
         utterance.voice = voices.filter((voice) => voice.name === 'Joana')[0];
-      } else if (language === 'Japanese') {
+      } else if (_language === 'Japanese') {
         utterance.voice = voices.filter((voice) => voice.name === 'O-Ren')[0];
         utterance.rate = 1;
       } else {
         utterance.voice = voices.filter((voice) => voice.lang.split('-')[0] === languageCode)[0];
       }
-
-      loading.reset();
-      handlePlay();
-    }
-  }, [utterance, synth, language, speedPercent]);
-
-  const handlePlay = () => {
-    if ((synth as SpeechSynthesis).paused) {
-      (synth as SpeechSynthesis).resume();
-    } else {
-      (synth as SpeechSynthesis).speak(utterance as SpeechSynthesisUtterance);
     }
   };
 
-  const handlePause = () => {
-    if ((synth as SpeechSynthesis).speaking) {
-      (synth as SpeechSynthesis).pause();
-    }
-  };
-
-  const handleClick = () => {
-    if ((synth as SpeechSynthesis).speaking) {
-      handlePause();
-    } else {
-      handlePlay();
-    }
-  };
-
-  const loading = {
-    reset: () => {
+  const playButtonStates = {
+    showPlay: () => {
       if (barRef.current) {
+        if (playRef.current?.getAttribute('display') === 'none') {
+          playRef.current?.setAttribute('display', 'block');
+          pauseRef.current?.setAttribute('display', 'none');
+        }
+
         barRef.current.style.display = 'none';
         const totalLength = barRef.current.getTotalLength().toString();
         barRef.current.setAttribute('stroke-dasharray', totalLength);
         barRef.current.setAttribute('stroke-dashoffset', totalLength);
         barRef.current.style.display = 'block';
+      }
+    },
+    showPause: () => {
+      if (pauseRef.current?.getAttribute('display') === 'none') {
+        playRef.current?.setAttribute('display', 'none');
+        pauseRef.current?.setAttribute('display', 'block');
+      }
+    },
+    loadTo: (charIndex?: number) => {
+      if (barRef.current) {
+        if (charIndex === undefined) {
+          barRef.current.style.display = 'none';
+          barRef.current.setAttribute('stroke-dashoffset', '0');
+          return;
+        }
+        const totalLength = barRef.current.getTotalLength();
+        const totalTextLength = text.split('').length;
+        const calc = totalLength - (charIndex / totalTextLength) * totalLength;
+        barRef.current.setAttribute('stroke-dashoffset', calc.toString());
       }
     },
   };
@@ -133,7 +143,6 @@ const SoundButton = ({ text, language, speedPercent }: { text: string; language:
       version="1.1"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 100 100"
-      ref={btnRef}
       onClick={handleClick}
     >
       <path

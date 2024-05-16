@@ -1,4 +1,4 @@
-import { Background, Card, Core, Icons, Theme } from '@mb3r/component-library';
+import { Background, Core, Icons, SmileyRating, Theme } from '@mb3r/component-library';
 import { generate } from 'random-words';
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
@@ -190,11 +190,7 @@ const App = () => {
       body: JSON.stringify({ username, correct }),
     })
       .then((res) => {
-        if (res.status === 200) {
-          return res.json();
-        } else {
-          throw new Error('Error posting card seen');
-        }
+        return res.json();
       })
       .then((data) => {
         if (data.detail && data.detail === 'User not found') {
@@ -223,18 +219,18 @@ const App = () => {
   };
 
   return (
-    <React.Fragment>
-      <Core.CssBaseline />
-      <div
-        style={{
-          height: '100vh',
-          width: '100vw',
-          position: 'absolute',
-          backgroundColor: themeMode === null ? 'dark' : themeMode === 'dark' ? '#181212' : '#F8FAF6',
-          zIndex: 0,
-        }}
-      >
-        <Theme.Provider mode={themeMode === null ? 'dark' : (themeMode as 'dark' | 'light')}>
+    <Theme.Provider mode={themeMode === null ? 'dark' : (themeMode as 'dark' | 'light')}>
+      <React.Fragment>
+        <Core.CssBaseline />
+        <div
+          style={{
+            height: '100vh',
+            width: '100vw',
+            position: 'absolute',
+            backgroundColor: themeMode === null ? 'dark' : themeMode === 'dark' ? '#0f1011' : '#F8FAF6',
+            zIndex: 0,
+          }}
+        >
           <Background.Surface>
             <Background.ContourMapSVG size={1000} />
           </Background.Surface>
@@ -347,7 +343,8 @@ const App = () => {
           </Core.Menu>
 
           <Core.Container maxWidth="sm">
-            <Card
+            <Core.Card
+              elevation={1}
               sx={{
                 mt: 10,
                 p: 2,
@@ -389,7 +386,7 @@ const App = () => {
                     onClick={fetchNewWords}
                     disabled={loading || !token}
                   >
-                    Learn{' '}
+                    Learn
                     {loading && token && (
                       <Core.CircularProgress
                         size={15}
@@ -411,21 +408,38 @@ const App = () => {
                     onClick={fetchRandomCards}
                     disabled={loading}
                   >
-                    Random<span> </span> {loading && <Core.CircularProgress size={15} />}
+                    Random
+                    {loading && (
+                      <Core.CircularProgress
+                        size={15}
+                        sx={{
+                          ml: 1,
+                        }}
+                      />
+                    )}
                   </Core.Button>
                 </Core.Grid>
                 <Core.Grid xs={3} item>
                   <Core.Button variant="outlined" color="primary" fullWidth onClick={fetchSeenCards} disabled={loading}>
-                    Review<span> </span> {loading && <Core.CircularProgress size={15} />}
+                    Review
+                    {loading && (
+                      <Core.CircularProgress
+                        size={15}
+                        sx={{
+                          ml: 1,
+                        }}
+                      />
+                    )}
                   </Core.Button>
                 </Core.Grid>
               </Core.Grid>
-            </Card>
+            </Core.Card>
           </Core.Container>
 
           {currentCard && (
             <Core.Container maxWidth="sm">
-              <Card
+              <Core.Card
+                elevation={1}
                 sx={{
                   mt: 2,
                   p: 2,
@@ -449,15 +463,15 @@ const App = () => {
                       pr: learningLanguage === 'Arabic' ? 0 : 1,
                     }}
                   >
-                    {currentCard.word}
+                    {currentCard.word}{' '}
+                    {learningLanguage && !answered && (
+                      <SoundButton
+                        text={currentCard.word}
+                        language={learningLanguage}
+                        speedPercent={DEFAULT_VOICE_SPEED / 100}
+                      />
+                    )}
                   </Core.Typography>
-                  {learningLanguage && (
-                    <SoundButton
-                      text={currentCard.word}
-                      language={learningLanguage}
-                      speedPercent={DEFAULT_VOICE_SPEED / 100}
-                    />
-                  )}
                 </Core.Stack>
 
                 <Core.Stack direction="row" spacing={2}>
@@ -495,15 +509,16 @@ const App = () => {
                         sx={{
                           pl: learningLanguage === 'Arabic' ? 1 : 0,
                           pr: learningLanguage === 'Arabic' ? 0 : 1,
+                          mt: 5,
                         }}
                       >
-                        {currentCard.sentenceLANG}
+                        {currentCard.sentenceLANG}{' '}
+                        <SoundButton
+                          text={currentCard.sentenceLANG}
+                          language={learningLanguage as string}
+                          speedPercent={DEFAULT_VOICE_SPEED / 100}
+                        />
                       </Core.Typography>
-                      <SoundButton
-                        text={currentCard.sentenceLANG}
-                        language={learningLanguage as string}
-                        speedPercent={DEFAULT_VOICE_SPEED / 100}
-                      />
                     </Core.Stack>
                     <Core.Divider variant="middle" />
                     <Core.Typography
@@ -519,43 +534,27 @@ const App = () => {
                       {currentCard.sentenceEN}
                     </Core.Typography>
 
-                    {currentCard?.times_seen && currentCard.times_seen >= 3 ? (
-                      <Core.Box sx={{ p: 2, display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-                        <Core.Typography gutterBottom>
-                          You&apos;ve seen this one a few times now how&apos;s it going?
-                        </Core.Typography>
-                        <Core.ButtonGroup
-                          variant="outlined"
-                          color="secondary"
-                          aria-label="outlined secondary button group"
-                        >
-                          <Core.Button onClick={nextWord}>Hard</Core.Button>
-                          <Core.Button onClick={nextWord}>Good</Core.Button>
-                          <Core.Button onClick={nextWord}>Easy</Core.Button>
-                        </Core.ButtonGroup>
-                      </Core.Box>
-                    ) : (
-                      <Core.Button
-                        aria-label="next card"
-                        color="secondary"
-                        variant="outlined"
-                        sx={{
-                          position: 'absolute',
-                          bottom: 0,
-                          right: 0,
-                          m: 2,
-                          py: 1,
-                          borderRadius: 50,
+                    <Core.Box
+                      sx={{
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Core.Typography gutterBottom>How was your memory for that?</Core.Typography>
+                      <SmileyRating
+                        onChange={nextWord}
+                        style={{
+                          transform: 'scale(1.5)',
+                          paddingRight: '10px',
                         }}
-                        onClick={nextWord}
-                      >
-                        <span>Next</span>
-                        <Icons.NavigateNext />
-                      </Core.Button>
-                    )}
+                      />
+                    </Core.Box>
                   </>
                 )}
-              </Card>
+              </Core.Card>
             </Core.Container>
           )}
           {error && (
@@ -567,9 +566,9 @@ const App = () => {
           )}
 
           <CreateMeDialog open={createMeDialog.open} toggle={createMeDialog.toggle} username={username ?? ''} />
-        </Theme.Provider>
-      </div>
-    </React.Fragment>
+        </div>
+      </React.Fragment>
+    </Theme.Provider>
   );
 };
 
