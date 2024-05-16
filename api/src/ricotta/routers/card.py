@@ -107,6 +107,8 @@ def generate_cards(request: Request, payload: GenerateCardsRequest, db: Session 
             cards.append(card)
 
         return JSONResponse(content={'cards': cards}, status_code=200)
+    except HTTPException as e:
+        raise e
     except Exception as err:
         db.rollback()
         logging.error(f"Unexpected error: {err}")
@@ -146,6 +148,8 @@ def get_cards(language: Annotated[str, None] = None, db: Session = Depends(get_d
     except json.decoder.JSONDecodeError:
         logging.error("Couldn't parse JSON from model response")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    except HTTPException as e:
+        raise e
     except Exception as err:
         logging.error(f"Unexpected {err=}, {type(err)=}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
@@ -198,6 +202,8 @@ def review_cards(username: Annotated[str, None] = None, language: Annotated[str,
     except json.decoder.JSONDecodeError:
         logging.error("Couldn't parse JSON from model response")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
+    except HTTPException as e:
+        raise e
     except Exception as err:
         logging.error(f"Unexpected {err=}, {type(err)=}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
@@ -234,7 +240,9 @@ def mark_card_as_seen(card_id: int, payload: MarkCardSeenRequest, db: Session = 
 
         db.commit()
         return JSONResponse(content={"message": "Card marked as seen", "times_seen": interaction.times_seen, "times_correct": interaction.times_correct}, status_code=200)
+    except HTTPException as e:
+        raise e
     except Exception as e:
-        db.rollback()
         logging.error(f"Unexpected error: {e}")
+        db.rollback()
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
