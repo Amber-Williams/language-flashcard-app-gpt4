@@ -11,9 +11,10 @@ export const useCreateMeDialog = () => {
 
 interface IFormDialogProps extends ReturnType<typeof useCreateMeDialog> {
   username: string;
+  callback: () => void;
 }
 
-export default function CreateMeDialog({ open, toggle, username }: IFormDialogProps) {
+export default function CreateMeDialog({ open, toggle, username, callback }: IFormDialogProps) {
   const [loading, setLoading] = React.useState(false);
   const [showSuccess, setShowSuccess] = React.useState(false);
 
@@ -28,8 +29,10 @@ export default function CreateMeDialog({ open, toggle, username }: IFormDialogPr
         },
         body: JSON.stringify({ username }),
       });
+
       toggle(false);
       setShowSuccess(true);
+      callback();
     } catch (error) {
       alert('Failed to create user. Please try again.');
     } finally {

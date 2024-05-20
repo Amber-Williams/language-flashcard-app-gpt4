@@ -2,14 +2,13 @@ from sqlalchemy import (
     Column,
     Integer,
     Float,
-    DateTime,
     String,
     ForeignKey,
 )
 from sqlalchemy.orm import relationship
 from fsrs import Card as FSRSCard
 
-from ricotta.services.database import Base
+from ricotta.services.database import Base, TZDateTime
 
 
 class UserCardInteraction(Base):
@@ -19,10 +18,10 @@ class UserCardInteraction(Base):
     user_id = Column(Integer, ForeignKey('ricotta__users.id'))
     card_id = Column(Integer, ForeignKey('ricotta__cards.id'))
     difficulty = Column(Float)
-    due = Column(DateTime)
+    due = Column(TZDateTime)
     elapsed_days = Column(Integer)
     lapses = Column(Integer, nullable=True)
-    last_review = Column(DateTime, nullable=True)
+    last_review = Column(TZDateTime, nullable=True)
     reps = Column(Integer)
     scheduled_days = Column(Integer)
     stability = Column(Float)

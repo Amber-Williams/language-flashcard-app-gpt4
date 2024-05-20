@@ -3,6 +3,7 @@ import json
 from typing import Annotated
 from random import shuffle
 from datetime import datetime, timezone, UTC
+from enum import IntEnum
 
 from fastapi import HTTPException, Depends, Request, APIRouter
 from fastapi.responses import JSONResponse
@@ -12,7 +13,7 @@ from sqlalchemy import (
     and_, func
 )
 from sqlalchemy.orm import joinedload, Session
-from fsrs import FSRS, Card as FSRSCard, State as FSRSStateEnum, Rating as FSRSRatingEnum
+from fsrs import FSRS, Card as FSRSCard, State as _FSRSStateEnum, Rating as _FSRSRatingEnum
 
 from ricotta.models.user import User
 from ricotta.models.card import Card, IncorrectOption, UserCardInteraction
@@ -28,6 +29,29 @@ card_router = APIRouter(
     prefix="/card",
     tags=["Card endpoints"],
 )
+
+
+class FSRSStateEnum(IntEnum):
+    New = _FSRSStateEnum.New
+    Learning = _FSRSStateEnum.Learning
+    Review = _FSRSStateEnum.Review
+    Relearning = _FSRSStateEnum.Relearning
+
+    @classmethod
+    def get_name(cls, value):
+        try:
+            return cls(value).name
+        except ValueError:
+            return None
+
+
+class FSRSRatingEnum(IntEnum):
+    Again = _FSRSRatingEnum.Again
+    Hard = _FSRSRatingEnum.Hard
+    Good = _FSRSRatingEnum.Good
+    Easy = _FSRSRatingEnum.Easy
+    Incorrect = 0
+
 
 class GenerateCardsRequest(BaseModel):
     subject: str
@@ -93,7 +117,6 @@ def generate_cards(request: Request, payload: GenerateCardsRequest, db: Session 
                     incorrect_options=[IncorrectOption(option=option) for option in word['incorrect_options']]
                 )
                 db.add(db_card)
-                db.commit()
             else:
                 logger.warning(f"Card already exists: {db_card.id}")
 
@@ -107,9 +130,12 @@ def generate_cards(request: Request, payload: GenerateCardsRequest, db: Session 
                 "english": word['english'],
                 "sentenceLANG": word['sentenceLANG'],
                 "sentenceEN": word['sentenceEN'],
-                "options": options
+                "options": options,
+                "state": FSRSStateEnum.New.name,
             }
             cards.append(card)
+
+        db.commit()
 
         return JSONResponse(content={'cards': cards}, status_code=200)
     except HTTPException as e:
@@ -121,7 +147,7 @@ def generate_cards(request: Request, payload: GenerateCardsRequest, db: Session 
 
 
 @card_router.get('/')
-def get_cards(username: Annotated[str, None] = None, language: Annotated[str, None] = None, db: Session = Depends(get_db)):
+def get_new_cards(username: Annotated[str, None] = None, language: Annotated[str, None] = None, db: Session = Depends(get_db)):
     try:
         orm_cards = None
         cards = []
@@ -166,7 +192,8 @@ def get_cards(username: Annotated[str, None] = None, language: Annotated[str, No
                 "english": orm_card.english,
                 "sentenceLANG": orm_card.sentenceLANG,
                 "sentenceEN": orm_card.sentenceEN,
-                "options": options
+                "options": options,
+                "state": FSRSStateEnum.New.name,
             }
             cards.append(card)
         return JSONResponse(content={'cards': cards}, status_code=200)
@@ -181,7 +208,7 @@ def get_cards(username: Annotated[str, None] = None, language: Annotated[str, No
 
 
 @card_router.get('/review')
-def review_cards(username: Annotated[str, None] = None, language: Annotated[str, None] = None, db: Session = Depends(get_db)):
+def get_review_cards(username: Annotated[str, None] = None, language: Annotated[str, None] = None, db: Session = Depends(get_db)):
     try:
         if not username:
             logging.error("Missing username")
@@ -195,11 +222,13 @@ def review_cards(username: Annotated[str, None] = None, language: Annotated[str,
             logging.error(f"Invalid language: {language}")
             raise HTTPException(status_code=400, detail="Invalid language")
 
+        today = func.date(func.now())
+
         interactions = db.query(UserCardInteraction)\
             .options(joinedload(UserCardInteraction.card))\
             .filter(
                 and_(UserCardInteraction.user_id == user.id,
-                     UserCardInteraction.due <= func.now())
+                     func.date(UserCardInteraction.due) == today)
             ).all()
 
         if not interactions:
@@ -218,7 +247,8 @@ def review_cards(username: Annotated[str, None] = None, language: Annotated[str,
                 "correct": orm_card.english,
                 "sentenceLANG": orm_card.sentenceLANG,
                 "sentenceEN": orm_card.sentenceEN,
-                "options": options
+                "options": options,
+                "state": FSRSStateEnum.get_name(interaction.state),
             }
             cards.append(card)
         shuffle(cards)
@@ -251,20 +281,23 @@ def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Sessio
             raise HTTPException(status_code=404, detail="Card not found")
         fsrs = FSRS()
         now = datetime.now(timezone.utc)
+        is_incorrect = payload.rating == 0
+        rating = FSRSRatingEnum.Again if is_incorrect else FSRSRatingEnum(payload.rating)
+
         try:
             card_interaction = db.query(UserCardInteraction)\
                 .filter(and_(UserCardInteraction.user_id == user.id,
                              UserCardInteraction.card_id == card_id))\
                 .one()
-            
-            # TODO: algo updated to work with the correctness of the answer
-            card_interaction.last_review = card_interaction.last_review.replace(tzinfo=UTC)
             fsrs_scheduling_cards = fsrs.repeat(card_interaction.to_fsrs_card(), now)
-            new_card_interaction = fsrs_scheduling_cards[payload.rating].card.to_dict()
-            new_card_interaction["rating"] = fsrs_scheduling_cards[payload.rating].review_log.rating.value
-            new_card_interaction["state"] = new_card_interaction["state"].value
+            new_card_interaction = fsrs_scheduling_cards[rating].card.to_dict()
+            new_card_interaction["rating"] = fsrs_scheduling_cards[rating].review_log.rating.value
+            new_card_interaction["state"] = new_card_interaction["state"].value if isinstance(new_card_interaction["state"], FSRSStateEnum) else new_card_interaction["state"]
             new_card_interaction["last_review"] = datetime.fromisoformat(new_card_interaction['last_review'])
-            new_card_interaction["due"] = datetime.fromisoformat(new_card_interaction['due'])
+            if is_incorrect:
+                new_card_interaction["due"] = now
+            else:
+                new_card_interaction["due"] = datetime.fromisoformat(new_card_interaction['due'])
 
             for key, value in new_card_interaction.items():
                 setattr(card_interaction, key, value)
@@ -273,7 +306,7 @@ def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Sessio
 
         except NoResultFound:
             card_interaction = FSRSCard(
-                state=FSRSStateEnum.Learning.value
+                state=FSRSStateEnum.Learning.name
             )
             card_interaction = UserCardInteraction(due=card_interaction.due,
                                                    stability=card_interaction.stability,
@@ -282,12 +315,12 @@ def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Sessio
                                                    scheduled_days=card_interaction.scheduled_days,
                                                    reps=card_interaction.reps,
                                                    lapses=card_interaction.lapses,
-                                                   state=card_interaction.state,
+                                                   state=FSRSStateEnum.Learning.value,
                                                    rating=payload.rating,
                                                    last_review=now.replace(tzinfo=UTC),
                                                    user_id=user.id,
                                                    card_id=card.id,
-                                                  )
+                                                   )
             db.add(card_interaction)
             db.commit()
         return JSONResponse(content={"message": "Success"}, status_code=200)

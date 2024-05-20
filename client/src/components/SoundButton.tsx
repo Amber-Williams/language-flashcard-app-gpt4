@@ -3,58 +3,81 @@ import { useEffect, useRef, useState } from 'react';
 import { Theme } from '@mb3r/component-library';
 import languageCodes from './../data/language-codes.json';
 
-const SoundButton = ({ text, language, speedPercent }: { text: string; language: string; speedPercent: number }) => {
+const utterance = new SpeechSynthesisUtterance();
+
+const SoundButton = ({
+  text,
+  language,
+  speedPercent,
+  voice,
+}: {
+  text: string;
+  language: string;
+  speedPercent: number;
+  voice: string;
+}) => {
   const theme = Theme.useTheme();
-  const [utterance, setUtterance] = useState<SpeechSynthesisUtterance>();
+  const [shouldPlayOnRender, setShouldPlayOnRender] = useState<boolean>(true);
   const barRef = useRef<SVGPathElement>(null);
   const playRef = useRef<SVGPathElement>(null);
   const pauseRef = useRef<SVGPathElement>(null);
   const isMultiWord = text.split(' ').length > 1;
 
   useEffect(() => {
-    const utterThis = new SpeechSynthesisUtterance(text);
-
-    utterThis.onboundary = (event) => {
-      if (barRef.current) {
-        playButtonStates.showPause();
-        if (isMultiWord) {
-          playButtonStates.loadTo(event.charIndex);
-        }
-      }
-    };
-
-    utterThis.onend = function () {
-      if (barRef.current) {
-        if (isMultiWord) {
-          playButtonStates.loadTo(undefined);
-        }
-
-        setTimeout(() => {
-          if (!window.speechSynthesis.speaking && barRef.current) {
-            playButtonStates.showPlay();
-          }
-        }, 300);
-      }
-    };
-
-    setUtterance(utterThis);
-    playButtonStates.showPlay();
+    utterance.addEventListener('boundary', onTextBoundary);
+    utterance.addEventListener('end', onTextEnd);
+    utterance.addEventListener('voiceschanged', onBrowserVoicesLoad);
 
     return () => {
       window.speechSynthesis.cancel();
+      utterance.removeEventListener('boundary', onTextBoundary);
+      utterance.removeEventListener('end', onTextEnd);
+      utterance.removeEventListener('voiceschanged', onBrowserVoicesLoad);
     };
   }, [text]);
 
   useEffect(() => {
     handleLanguageChange(language);
-  }, [window.speechSynthesis?.getVoices()]);
+  }, [window.speechSynthesis?.getVoices(), language]);
 
   useEffect(() => {
-    handlePlay();
+    if (shouldPlayOnRender && utterance && window.speechSynthesis) {
+      setShouldPlayOnRender(false);
+      window.speechSynthesis.cancel();
+      handlePlay();
+    }
   });
+
+  const onBrowserVoicesLoad = function () {
+    handleLanguageChange(language);
+  };
+
+  const onTextBoundary = function (event: SpeechSynthesisEvent) {
+    if (barRef.current) {
+      playButtonStates.showPause();
+      if (isMultiWord) {
+        playButtonStates.loadTo(event.charIndex);
+      }
+    }
+  };
+
+  const onTextEnd = function () {
+    if (barRef.current) {
+      if (isMultiWord) {
+        playButtonStates.loadTo(undefined);
+      }
+
+      setTimeout(() => {
+        if (!window.speechSynthesis.speaking && barRef.current) {
+          playButtonStates.showPlay();
+        }
+      }, 300);
+    }
+  };
 
   const handlePlay = () => {
     if (utterance && window.speechSynthesis && window.speechSynthesis.getVoices()) {
+      utterance.text = text;
       playButtonStates.showPlay();
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
@@ -76,8 +99,14 @@ const SoundButton = ({ text, language, speedPercent }: { text: string; language:
     if (utterance && window.speechSynthesis) {
       const languageCode = languageCodes.find((languageCode) => languageCode.name.includes(_language))?.code;
       const voices = window.speechSynthesis.getVoices();
+      const voiceUtterance = voices.find((_voice) => _voice.name === voice);
 
       utterance.rate = speedPercent;
+
+      if (voiceUtterance) {
+        utterance.voice = voiceUtterance;
+        return;
+      }
 
       // Spanish voices are pretty bad with an exception of Google español and Paulina
       if (_language === 'Spanish') {
@@ -95,7 +124,10 @@ const SoundButton = ({ text, language, speedPercent }: { text: string; language:
         utterance.voice = voices.filter((voice) => voice.name === 'O-Ren')[0];
         utterance.rate = 1;
       } else {
-        utterance.voice = voices.filter((voice) => voice.lang.split('-')[0] === languageCode)[0];
+        // Dev note: The speechSynthesis specification is pretty clear that a SpeechSynthesisVoice
+        //           object's lang property should be a BCP 47 language code (e.g. "en-US", "ru-RU").
+        //           Android returns voices with lang properties like "en_US" and "ru_RU".
+        utterance.voice = voices.filter((voice) => voice.lang.replace('_', '-').split('-')[0] === languageCode)[0];
       }
     }
   };
