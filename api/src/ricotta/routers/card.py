@@ -292,7 +292,7 @@ def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Sessio
             fsrs_scheduling_cards = fsrs.repeat(card_interaction.to_fsrs_card(), now)
             new_card_interaction = fsrs_scheduling_cards[rating].card.to_dict()
             new_card_interaction["rating"] = fsrs_scheduling_cards[rating].review_log.rating.value
-            new_card_interaction["state"] = new_card_interaction["state"].value if isinstance(new_card_interaction["state"], FSRSStateEnum) else new_card_interaction["state"]
+            new_card_interaction["state"] = new_card_interaction["state"].value if isinstance(new_card_interaction["state"], IntEnum) else new_card_interaction["state"]
             new_card_interaction["last_review"] = datetime.fromisoformat(new_card_interaction['last_review'])
             if is_incorrect:
                 new_card_interaction["due"] = now
@@ -305,22 +305,30 @@ def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Sessio
             db.commit()
 
         except NoResultFound:
-            card_interaction = FSRSCard(
-                state=FSRSStateEnum.Learning.name
-            )
-            card_interaction = UserCardInteraction(due=card_interaction.due,
-                                                   stability=card_interaction.stability,
-                                                   difficulty=card_interaction.difficulty,
-                                                   elapsed_days=card_interaction.elapsed_days,
-                                                   scheduled_days=card_interaction.scheduled_days,
-                                                   reps=card_interaction.reps,
-                                                   lapses=card_interaction.lapses,
-                                                   state=FSRSStateEnum.Learning.value,
-                                                   rating=payload.rating,
-                                                   last_review=now.replace(tzinfo=UTC),
-                                                   user_id=user.id,
-                                                   card_id=card.id,
-                                                   )
+            card_interaction = FSRSCard()
+            fsrs_scheduling_cards = fsrs.repeat(card_interaction, now)
+            card_interaction = fsrs_scheduling_cards[rating].card.to_dict()
+            card_interaction["rating"] = fsrs_scheduling_cards[rating].review_log.rating.value
+            card_interaction["state"] = card_interaction["state"].value if isinstance(card_interaction["state"], IntEnum) else card_interaction["state"]
+            card_interaction["last_review"] = datetime.fromisoformat(card_interaction["last_review"])
+            if is_incorrect:
+                card_interaction["due"] = now
+            else:
+                card_interaction["due"] = datetime.fromisoformat(card_interaction["due"])
+
+            card_interaction = UserCardInteraction(due=card_interaction["due"],
+                                                       stability=card_interaction["stability"],
+                                                       difficulty=card_interaction["difficulty"],
+                                                       elapsed_days=card_interaction["elapsed_days"],
+                                                       scheduled_days=card_interaction["scheduled_days"],
+                                                       reps=card_interaction["reps"],
+                                                       lapses=card_interaction["lapses"],
+                                                       state=card_interaction["state"],
+                                                       rating=card_interaction["rating"],
+                                                       last_review=card_interaction["last_review"],
+                                                       user_id=user.id,
+                                                       card_id=card.id,
+                                                       )
             db.add(card_interaction)
             db.commit()
         return JSONResponse(content={"message": "Success"}, status_code=200)

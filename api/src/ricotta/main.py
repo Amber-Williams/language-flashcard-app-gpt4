@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Ricotta API",
-    version="2.1.0",
+    version="2.2.0",
     description="Ricotta is a language learning app integrated with AI to generate new content.",
     docs_url=config.docs_url,
     openapi_url=None,

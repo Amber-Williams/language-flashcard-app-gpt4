@@ -16,62 +16,60 @@ const ContentCardFront = (props: IContentCardFront) => {
   if (!props.card) return null;
 
   return (
-    <Core.Container maxWidth="sm">
-      <Core.Card
-        elevation={1}
-        sx={{
-          mt: 2,
-          p: 2,
-          position: 'relative',
-          pt: 4,
-        }}
+    <Core.Card
+      elevation={1}
+      sx={{
+        mt: 1,
+        p: 2,
+        position: 'relative',
+        pt: 4,
+      }}
+    >
+      <CardStateChip state={props.card.state} />
+
+      <Core.Stack
+        direction={props.learningLanguage === 'Arabic' ? 'row-reverse' : 'row'}
+        useFlexGap
+        flexWrap="wrap"
+        justifyContent="center"
+        alignItems="center"
       >
-        <CardStateChip state={props.card.state} />
-
-        <Core.Stack
-          direction={props.learningLanguage === 'Arabic' ? 'row-reverse' : 'row'}
-          useFlexGap
-          flexWrap="wrap"
-          justifyContent="center"
-          alignItems="center"
+        <Core.Typography
+          variant="h5"
+          component="h5"
+          gutterBottom
+          sx={{
+            pl: props.learningLanguage === 'Arabic' ? 1 : 0,
+            pr: props.learningLanguage === 'Arabic' ? 0 : 1,
+            mt: 3,
+          }}
         >
-          <Core.Typography
-            variant="h5"
-            component="h5"
-            gutterBottom
-            sx={{
-              pl: props.learningLanguage === 'Arabic' ? 1 : 0,
-              pr: props.learningLanguage === 'Arabic' ? 0 : 1,
-              mt: 3,
-            }}
-          >
-            {props.card.word}{' '}
-            {props.learningLanguage && (
-              <SoundButton
-                text={props.card.word}
-                language={props.learningLanguage}
-                speedPercent={props.voiceSpeed / 100}
-                voice={props.voice}
-              />
-            )}
-          </Core.Typography>
-        </Core.Stack>
+          {props.card.word}{' '}
+          {props.learningLanguage && (
+            <SoundButton
+              text={props.card.word}
+              language={props.learningLanguage}
+              speedPercent={props.voiceSpeed / 100}
+              voice={props.voice}
+            />
+          )}
+        </Core.Typography>
+      </Core.Stack>
 
-        <Core.Stack direction={isMobile ? 'column' : 'row'} spacing={2}>
-          {props.card.options?.map((option, index) => (
-            <Core.Button
-              key={option + index}
-              variant="outlined"
-              color="primary"
-              fullWidth
-              onClick={() => props.setAnswered(index)}
-            >
-              {option}
-            </Core.Button>
-          ))}
-        </Core.Stack>
-      </Core.Card>
-    </Core.Container>
+      <Core.Stack direction={isMobile ? 'column' : 'row'} spacing={2}>
+        {props.card.options?.map((option, index) => (
+          <Core.Button
+            key={option + index}
+            variant="outlined"
+            color="primary"
+            fullWidth
+            onClick={() => props.setAnswered(index)}
+          >
+            {option}
+          </Core.Button>
+        ))}
+      </Core.Stack>
+    </Core.Card>
   );
 };
 

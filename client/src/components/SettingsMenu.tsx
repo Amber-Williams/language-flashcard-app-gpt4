@@ -3,8 +3,9 @@ import { generate } from 'random-words';
 import { useEffect, useState } from 'react';
 
 import languageCodes from './../data/language-codes.json';
+import LanguageDropdownInput from './LanguageDropdownInput';
 
-type SettingsMenuType = ReturnType<typeof useSettingsMenu>;
+export type SettingsMenuType = ReturnType<typeof useSettingsMenu>;
 
 export const useSettingsMenu = () => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | undefined>();
@@ -58,6 +59,12 @@ export const useSettingsMenu = () => {
         _voice = voices.filter((voice) => voice.name === 'Joana')[0].name;
       } else if (_language === 'Japanese') {
         _voice = voices.filter((voice) => voice.name === 'O-Ren')[0].name;
+      } else {
+        _voice = voices.filter(
+          (voice) =>
+            voice.lang.replace('_', '-').split('-')[0] ===
+            languageCodes.find((languageCode) => languageCode.name.includes(_language))?.code,
+        )[0].name;
       }
       setVoice(_voice);
     } else {
@@ -188,33 +195,10 @@ const SettingsMenu = (props: SettingsMenuType) => {
         </Core.Box>
       </Core.MenuItem>
       <Core.MenuItem>
-        <Core.TextField
-          select
-          label="Language"
-          value={props.learningLanguage}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-            props.setLearningLanguage(event.target.value);
-          }}
-          SelectProps={{
-            native: true,
-          }}
-          sx={{
-            mt: 1,
-            width: '100%',
-          }}
-          size="small"
-        >
-          <option value="Arabic">Arabic</option>
-          <option value="French">French</option>
-          <option value="German">German</option>
-          <option value="Hindi">Hindi</option>
-          <option value="Italian">Italian</option>
-          <option value="Japanese">Japanese</option>
-          <option value="Mandarin">Mandarin</option>
-          <option value="Portuguese">Portuguese</option>
-          <option value="Russian">Russian</option>
-          <option value="Spanish">Spanish</option>
-        </Core.TextField>
+        <LanguageDropdownInput
+          setLearningLanguage={props.setLearningLanguage}
+          learningLanguage={props.learningLanguage}
+        />
       </Core.MenuItem>
       <Core.MenuItem>
         <Core.TextField

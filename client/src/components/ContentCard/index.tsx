@@ -93,45 +93,43 @@ export const CardStateChip = ({ state }: { state: 'New' | 'Learning' | 'Review' 
 
 export const EmptyDeckCard = ({ state }: { state: 'New' | 'Review' }) => {
   return (
-    <Core.Container maxWidth="sm">
-      <Core.Card
-        elevation={1}
+    <Core.Card
+      elevation={1}
+      sx={{
+        mt: 2,
+        p: 2,
+        position: 'relative',
+        pt: 4,
+      }}
+    >
+      <CardStateChip state={state} />
+      <Core.Typography
+        variant="h5"
+        component="h5"
+        gutterBottom
         sx={{
-          mt: 2,
-          p: 2,
-          position: 'relative',
-          pt: 4,
+          pl: 0,
+          pr: 1,
+          mt: 3,
+          textAlign: 'center',
         }}
       >
-        <CardStateChip state={state} />
-        <Core.Typography
-          variant="h5"
-          component="h5"
-          gutterBottom
-          sx={{
-            pl: 0,
-            pr: 1,
-            mt: 3,
-            textAlign: 'center',
-          }}
-        >
-          No more cards are in this deck.
+        No more cards are in this deck.
+      </Core.Typography>
+      {state === 'New' ? (
+        <Core.Typography variant="body2" component="p" gutterBottom sx={{ mb: 3, mx: 3 }}>
+          You have reached the end of the words for this language. <br />
+          <br />
+          To keep learning this language generate more cards with an OpenAI key to continue learning. Other users will
+          also be able to review cards you generate! <br />
+          <br />
+          You can also switch to another language.
         </Core.Typography>
-        {state === 'New' ? (
-          <Core.Typography variant="body2" component="p" gutterBottom sx={{ mb: 3, mx: 3 }}>
-            You have reached the end of the words for this language. <br />
-            <br />
-            To keep learning this language generate more cards with an OpenAI key to continue learning. Other users will
-            also be able to review cards you generate! <br />
-            <br />
-            You can also switch to another language.
-          </Core.Typography>
-        ) : (
-          <Core.Typography variant="body2" component="p" gutterBottom sx={{ textAlign: 'center', mb: 3, mx: 3 }}>
-            You have reviewed all the cards due for review today. Check back tomorrow or learn/generate new cards.
-          </Core.Typography>
-        )}
-      </Core.Card>
-    </Core.Container>
+      ) : (
+        <Core.Typography variant="body2" component="p" gutterBottom sx={{ textAlign: 'center', mb: 3, mx: 3 }}>
+          You have reviewed all the cards due for review today. Check back tomorrow or learn/generate new cards.
+        </Core.Typography>
+      )}
+    </Core.Card>
   );
 };

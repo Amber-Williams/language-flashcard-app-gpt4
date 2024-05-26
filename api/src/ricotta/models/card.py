@@ -32,6 +32,10 @@ class UserCardInteraction(Base):
     card = relationship("Card", back_populates="user_interactions")
 
     def to_fsrs_card(self) -> FSRSCard:
+        # FSRSCard retrievability logic requires stability to be at least 0.01 but defaults to 0
+        if not self.stability:
+            self.stability = 0.01
+
         return FSRSCard(
             difficulty=self.difficulty,
             due=self.due,
