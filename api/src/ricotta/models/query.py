@@ -10,4 +10,4 @@ class Query(Base):
     __tablename__ = 'ricotta__queries'
 
     id = Column(Integer, autoincrement=True, primary_key=True)
-    query = Column(Text)
+    query = Column(Text, unique=False)

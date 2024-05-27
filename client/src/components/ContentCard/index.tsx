@@ -35,12 +35,17 @@ export const useContentCard = () => {
     setAnswered('pending');
   };
 
-  const nextCard = () => {
+  const nextCard = (onDeckDoneCallback?: () => void) => {
     const currentIndex = cards.findIndex((c) => c.id === card?.id);
     const nextCard = cards[currentIndex + 1];
     if (!nextCard) {
-      // deck stack completed reset state
-      onSetCards([]);
+      if (onDeckDoneCallback) {
+        // used for deck pagination
+        onDeckDoneCallback();
+      } else {
+        // deck stack completed reset state
+        resetDeck();
+      }
     } else {
       onSetCard(nextCard);
     }
@@ -91,7 +96,7 @@ export const CardStateChip = ({ state }: { state: 'New' | 'Learning' | 'Review' 
   );
 };
 
-export const EmptyDeckCard = ({ state }: { state: 'New' | 'Review' }) => {
+export const EmptyDeckCard = ({ state, language }: { state: 'New' | 'Review'; language: string }) => {
   return (
     <Core.Card
       elevation={1}
@@ -111,22 +116,22 @@ export const EmptyDeckCard = ({ state }: { state: 'New' | 'Review' }) => {
           pl: 0,
           pr: 1,
           mt: 3,
-          textAlign: 'center',
+          mx: 3,
+          fontFamily: 'monospace',
+          fontWeight: 600,
+          color: 'inherit',
+          textDecoration: 'none',
         }}
       >
-        No more cards are in this deck.
+        {state === 'New' ? 'No more cards' : 'Due cards completed!'}
       </Core.Typography>
       {state === 'New' ? (
-        <Core.Typography variant="body2" component="p" gutterBottom sx={{ mb: 3, mx: 3 }}>
-          You have reached the end of the words for this language. <br />
-          <br />
-          To keep learning this language generate more cards with an OpenAI key to continue learning. Other users will
-          also be able to review cards you generate! <br />
-          <br />
-          You can also switch to another language.
+        <Core.Typography variant="body" component="p" gutterBottom sx={{ mb: 3, mx: 3 }}>
+          To keep learning {language} generate more cards with AI. Other users will be able to review cards you generate
+          and visa versa! <br />
         </Core.Typography>
       ) : (
-        <Core.Typography variant="body2" component="p" gutterBottom sx={{ textAlign: 'center', mb: 3, mx: 3 }}>
+        <Core.Typography variant="body" component="p" gutterBottom sx={{ mb: 3, mx: 3 }}>
           You have reviewed all the cards due for review today. Check back tomorrow or learn/generate new cards.
         </Core.Typography>
       )}

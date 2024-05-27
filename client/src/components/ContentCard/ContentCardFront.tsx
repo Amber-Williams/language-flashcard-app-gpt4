@@ -19,7 +19,7 @@ const ContentCardFront = (props: IContentCardFront) => {
     <Core.Card
       elevation={1}
       sx={{
-        mt: 1,
+        mt: 2,
         p: 2,
         position: 'relative',
         pt: 4,

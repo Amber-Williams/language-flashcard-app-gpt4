@@ -27,7 +27,7 @@ const SmileyRatingMapper = {
 
 const cards = {
   getReview: async (username: string, language: string) => {
-    return await Lib.Fetch<{ cards: ICard[] }>({
+    return await Lib.Fetch<{ cards: ICard[]; dueCards: ICard[] }>({
       url: `${import.meta.env.VITE_API_SERVER}/api/card/review?username=${username}&language=${language}`,
     });
   },
@@ -37,7 +37,7 @@ const cards = {
     });
   },
   postReviewRating: async (username: string, cardId: number, correct: boolean, rating: number) => {
-    return await Lib.Fetch<{ detail: undefined } | { detail: 'User not found' }>({
+    return await Lib.Fetch<{ detail: undefined; isDue: boolean } | { detail: 'User not found'; isDue: undefined }>({
       url: `${import.meta.env.VITE_API_SERVER}/api/card/${cardId}`,
       options: {
         method: 'POST',
@@ -51,7 +51,7 @@ const cards = {
   },
   generateNew: async (subject: string, language: string, token?: string) => {
     return await Lib.Fetch<{ cards: ICard[] }>({
-      url: `${import.meta.env.VITE_API_SERVER}/api/card/generate/`,
+      url: `${import.meta.env.VITE_API_SERVER}/api/card/generate`,
       options: {
         method: 'POST',
         headers: {

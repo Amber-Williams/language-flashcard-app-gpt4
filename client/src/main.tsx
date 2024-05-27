@@ -7,6 +7,7 @@ import CreateMeDialog, { useCreateMeDialog } from './components/CreateMeDialog';
 import LanguageDropdownInput from './components/LanguageDropdownInput';
 import Logo from './components/Logo';
 import SettingsMenu, { useSettingsMenu } from './components/SettingsMenu';
+import StudyToggle from './components/StudyToggle';
 import * as queries from './queries';
 
 import './main.css';
@@ -20,7 +21,16 @@ const App = () => {
   const [error, setError] = React.useState<boolean>(false);
   const [subject, setSubject] = React.useState<string>('');
   const cardContent = useContentCard();
-  const [isEmptyDeck, setIsEmptyDeck] = React.useState<'New' | 'Review' | undefined>(undefined);
+  const [fetchDueDeckCache, setFetchDueDeckCache] = React.useState<
+    | undefined
+    | {
+        cards: queries.ICard[];
+        dueCards: queries.ICard[];
+      }
+  >();
+
+  const [deckType, setDeckType] = React.useState<'New' | 'Review' | undefined>(undefined);
+  const [studyToggleTab, setStudyToggleTab] = React.useState<'Due' | 'All'>('Due');
   const cardProgress =
     cardContent && cardContent.card && cardContent.cards.length
       ? ((cardContent.cards.indexOf(cardContent.card) + 1) / (cardContent.cards.length + 1)) * 100
@@ -29,9 +39,19 @@ const App = () => {
   // clears deck on language change
   useEffect(() => {
     cardContent.resetDeck();
+    setDeckType(undefined);
   }, [settings.learningLanguage]);
 
-  const fetchNewWords = async () => {
+  // set review deck on due toggle change
+  useEffect(() => {
+    if (deckType === 'Review' && studyToggleTab === 'Due') {
+      cardContent.setCards(fetchDueDeckCache?.dueCards ?? []);
+    } else if (deckType === 'Review' && studyToggleTab === 'All') {
+      cardContent.setCards(fetchDueDeckCache?.cards ?? []);
+    }
+  }, [studyToggleTab]);
+
+  const generateNewDeck = async () => {
     setLoading(true);
     setError(false);
 
@@ -42,15 +62,15 @@ const App = () => {
       setLoading(false);
       return;
     }
-
+    setDeckType('New');
     cardContent.setCards(data.cards);
     setLoading(false);
   };
 
-  const fetchSeenCards = async () => {
+  const fetchDueDeck = async () => {
     setLoading(true);
     setError(false);
-    setIsEmptyDeck(undefined);
+    setDeckType(undefined);
     cardContent.resetDeck();
 
     const { data, error } = await queries.cards.getReview(settings.username, settings.learningLanguage);
@@ -60,18 +80,23 @@ const App = () => {
       return;
     }
 
-    if (data.cards.length === 0) {
-      setIsEmptyDeck('Review');
-    } else {
+    setFetchDueDeckCache({
+      cards: data.cards,
+      dueCards: data.dueCards,
+    });
+    setDeckType('Review');
+    if (studyToggleTab === 'Due') {
+      cardContent.setCards(data.dueCards);
+    } else if (studyToggleTab === 'All') {
       cardContent.setCards(data.cards);
     }
     setLoading(false);
   };
 
-  const fetchRandomCards = async () => {
+  const fetchNewDeck = async () => {
     setLoading(true);
     setError(false);
-    setIsEmptyDeck(undefined);
+    setDeckType(undefined);
     cardContent.resetDeck();
 
     const { data, error } = await queries.cards.getNew(settings.username, settings.learningLanguage);
@@ -81,11 +106,10 @@ const App = () => {
       return;
     }
 
-    if (data.cards.length === 0) {
-      setIsEmptyDeck('New');
-    } else {
+    if (data.cards.length > 0) {
       cardContent.setCards(data.cards);
     }
+    setDeckType('New');
     setLoading(false);
   };
 
@@ -102,7 +126,33 @@ const App = () => {
       return;
     }
 
-    cardContent.nextCard();
+    if (!data.isDue && fetchDueDeckCache?.dueCards) {
+      // remove card from due deck
+      const newDueCards = fetchDueDeckCache.dueCards.filter((c) => c.id !== cardId);
+      setFetchDueDeckCache({
+        ...fetchDueDeckCache,
+        dueCards: newDueCards,
+      });
+    } else if (data.isDue && studyToggleTab === 'All' && fetchDueDeckCache?.cards) {
+      // add card to due deck when answered wrong and is reviewing all cards
+      if (!fetchDueDeckCache.dueCards.find((c) => c.id === cardId)) {
+        const card = fetchDueDeckCache.cards.find((c) => c.id === cardId);
+        if (card) {
+          const newDueCards = structuredClone(fetchDueDeckCache.dueCards);
+          newDueCards.push(card);
+          setFetchDueDeckCache({
+            ...fetchDueDeckCache,
+            dueCards: newDueCards,
+          });
+        }
+      }
+    }
+
+    if (deckType === 'Review' && studyToggleTab === 'Due') {
+      cardContent.nextCard(fetchDueDeck);
+    } else {
+      cardContent.nextCard();
+    }
   };
 
   return (
@@ -172,10 +222,13 @@ const App = () => {
           <Core.Container maxWidth="sm">
             <Core.Card
               elevation={1}
-              sx={{
+              sx={(theme: typeof Theme.useTheme) => ({
                 mt: 8,
                 p: 2,
-              }}
+                [theme.breakpoints.only('xs')]: {
+                  mt: 2,
+                },
+              })}
             >
               <Core.Typography
                 gutterBottom
@@ -199,13 +252,7 @@ const App = () => {
 
               <Core.Grid container spacing={2}>
                 <Core.Grid xs={6} item>
-                  <Core.Button
-                    variant="outlined"
-                    color="secondary"
-                    fullWidth
-                    onClick={fetchRandomCards}
-                    disabled={loading}
-                  >
+                  <Core.Button variant="outlined" color="secondary" fullWidth onClick={fetchNewDeck} disabled={loading}>
                     Learn
                     {loading && (
                       <Core.CircularProgress
@@ -218,7 +265,7 @@ const App = () => {
                   </Core.Button>
                 </Core.Grid>
                 <Core.Grid xs={6} item>
-                  <Core.Button variant="outlined" color="primary" fullWidth onClick={fetchSeenCards} disabled={loading}>
+                  <Core.Button variant="outlined" color="primary" fullWidth onClick={fetchDueDeck} disabled={loading}>
                     Study
                     {loading && (
                       <Core.CircularProgress
@@ -230,65 +277,100 @@ const App = () => {
                     )}
                   </Core.Button>
                 </Core.Grid>
-
-                <Core.Grid xs={12} item>
-                  <Core.Divider variant="middle" sx={{ my: 2 }} />
-                </Core.Grid>
-
-                <Core.Grid xs={9} item>
-                  <Core.TextField
-                    label={'Learn words about...'}
-                    variant="outlined"
-                    fullWidth
-                    size="small"
-                    onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSubject(event.target.value)}
-                    disabled={!settings.token}
-                    sx={{
-                      opacity: settings.token ? 1 : 0.3,
-                    }}
-                  />
-                  {!settings.token && (
-                    <Core.Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', opacity: 0.5, mt: 1 }}>
-                      <Icons.Info
-                        fontSize="small"
-                        sx={{
-                          width: 15,
-                          mr: 1,
-                        }}
-                      />
-                      <Core.Typography variant="caption" component="p" align="left" small>
-                        Add OpenAI key in settings to enable this feature
-                      </Core.Typography>
-                    </Core.Box>
-                  )}
-                </Core.Grid>
-                <Core.Grid xs={3} item>
-                  <Core.Button
-                    variant="contained"
-                    color="primary"
-                    fullWidth
-                    onClick={fetchNewWords}
-                    disabled={loading || !settings.token}
-                    sx={{
-                      opacity: settings.token ? 1 : 0.3,
-                    }}
-                  >
-                    Generate
-                    {loading && settings.token && (
-                      <Core.CircularProgress
-                        size={15}
-                        sx={{
-                          ml: 2,
-                        }}
-                      />
-                    )}
-                  </Core.Button>
-                </Core.Grid>
               </Core.Grid>
             </Core.Card>
+            <Core.Accordion sx={{ mt: -1 }}>
+              <Core.AccordionSummary
+                expandIcon={<Icons.ExpandMore />}
+                aria-controls="panel3-content"
+                id="panel3-header"
+                sx={{
+                  fontFamily: 'monospace',
+                  fontWeight: 600,
+                  color: 'inherit',
+                  textDecoration: 'none',
+                }}
+              >
+                Generate new words with AI
+              </Core.AccordionSummary>
+              <Core.AccordionDetails>
+                <Core.Grid container spacing={2}>
+                  <Core.Grid xs={12} md={9} item>
+                    <Core.TextField
+                      label={'Learn words about...'}
+                      variant="outlined"
+                      fullWidth
+                      size="small"
+                      onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSubject(event.target.value)}
+                      disabled={!settings.token}
+                      sx={{
+                        opacity: settings.token ? 1 : 0.3,
+                      }}
+                    />
+                    {!settings.token && (
+                      <Core.Box
+                        sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', opacity: 0.5, mt: 1 }}
+                      >
+                        <Icons.Info
+                          fontSize="small"
+                          sx={{
+                            width: 15,
+                            mr: 1,
+                          }}
+                        />
+                        <Core.Typography variant="caption" component="p" align="left" small>
+                          Add OpenAI key in settings to enable this feature
+                        </Core.Typography>
+                      </Core.Box>
+                    )}
+                  </Core.Grid>
+                  <Core.Grid xs={12} md={3} item>
+                    <Core.Button
+                      variant="contained"
+                      color="primary"
+                      fullWidth
+                      onClick={generateNewDeck}
+                      disabled={loading || !settings.token}
+                      sx={{
+                        opacity: settings.token ? 1 : 0.3,
+                      }}
+                    >
+                      Generate
+                      {loading && settings.token && (
+                        <Core.CircularProgress
+                          size={15}
+                          sx={{
+                            ml: 2,
+                          }}
+                        />
+                      )}
+                    </Core.Button>
+                  </Core.Grid>
+                  <Core.Grid xs={12} item>
+                    <Core.Alert severity="info" variant="outlined" sx={{ mt: 3 }}>
+                      <Core.AlertTitle>How is my data used?</Core.AlertTitle>
+                      OpenAI's chat API is used generate 5 new cards based on the subject you provide. Content you
+                      generate will available for other users to learn from. <b>Your keys are never stored.</b>
+                      <br />
+                      <br />
+                      It is recommended to invalidate keys in your OpenAI account after each session when using
+                      third-party applications like this app.
+                    </Core.Alert>
+                  </Core.Grid>
+                </Core.Grid>
+              </Core.AccordionDetails>
+            </Core.Accordion>
           </Core.Container>
 
           <Core.Container maxWidth="sm" sx={{ pb: 6 }}>
+            {deckType === 'Review' && (
+              <StudyToggle
+                setStudyToggleTab={setStudyToggleTab}
+                studyToggleTab={studyToggleTab}
+                dueCount={fetchDueDeckCache?.dueCards?.length ?? 0}
+                allCount={fetchDueDeckCache?.cards.length}
+              />
+            )}
             {cardContent.card && (
               <BorderLinearProgress
                 sx={{
@@ -317,16 +399,20 @@ const App = () => {
               />
             )}
 
-            {isEmptyDeck && <EmptyDeckCard state={isEmptyDeck} />}
-          </Core.Container>
+            {deckType && cardContent.cards.length === 0 && (
+              <EmptyDeckCard state={deckType} language={settings.learningLanguage} />
+            )}
 
-          {error && (
-            <Core.Container maxWidth="sm" sx={{ mt: 3 }}>
-              <Core.Alert variant="outlined" severity="error" sx={{ bgcolor: '#f4433640', borderColor: '#f44336' }}>
+            {error && (
+              <Core.Alert
+                variant="outlined"
+                severity="error"
+                sx={{ bgcolor: '#f4433640', borderColor: '#f44336', mt: 1 }}
+              >
                 Oops, something went wrong. Please refresh the page and try again.
               </Core.Alert>
-            </Core.Container>
-          )}
+            )}
+          </Core.Container>
 
           <CreateMeDialog
             open={createMeDialog.open}

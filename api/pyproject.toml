@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ricotta"
-version = "2.2.0"
+version = "2.3.0"
 description = "A language learning app"
 license = "MIT"
 authors = ["Amber Williams <https://github.com/amber-williams>"]

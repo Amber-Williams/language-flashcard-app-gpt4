@@ -8,6 +8,7 @@ notebooks/
 
 # javascript
 dist/
+.vite/
 
 # my local development todo list
 todo

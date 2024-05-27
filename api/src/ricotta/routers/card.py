@@ -2,7 +2,7 @@
 import json
 from typing import Annotated
 from random import shuffle
-from datetime import datetime, timezone, UTC
+from datetime import datetime, timezone, date
 from enum import IntEnum
 
 from fastapi import HTTPException, Depends, Request, APIRouter
@@ -117,6 +117,7 @@ def generate_cards(request: Request, payload: GenerateCardsRequest, db: Session 
                     incorrect_options=[IncorrectOption(option=option) for option in word['incorrect_options']]
                 )
                 db.add(db_card)
+                db.flush()  # flush to get the id
             else:
                 logger.warning(f"Card already exists: {db_card.id}")
 
@@ -215,29 +216,31 @@ def get_review_cards(username: Annotated[str, None] = None, language: Annotated[
             raise HTTPException(status_code=400, detail="Missing username")
         user = db.query(User).filter(User.username == username).first()
         if not user:
-            return JSONResponse(content={"cards": []}, status_code=200)
+            return JSONResponse(content={"cards": [], 'dueCards': []}, status_code=200)
 
         language = language or config.default_language
         if language not in config.supported_languages:
             logging.error(f"Invalid language: {language}")
             raise HTTPException(status_code=400, detail="Invalid language")
 
-        today = func.date(func.now())
-
         interactions = db.query(UserCardInteraction)\
+            .join(UserCardInteraction.card)\
             .options(joinedload(UserCardInteraction.card))\
             .filter(
                 and_(UserCardInteraction.user_id == user.id,
-                     func.date(UserCardInteraction.due) == today)
-            ).all()
+                     Card.language == language))\
+            .order_by(UserCardInteraction.due)\
+            .all()
 
         if not interactions:
-            return JSONResponse(content={"cards": []}, status_code=200)
+            return JSONResponse(content={"cards": [], 'dueCards': []}, status_code=200)
+
+        due_cards = []
         cards = []
+
         for interaction in interactions:
             orm_card = interaction.card
-            if orm_card.language != language:
-                continue
+            is_due = interaction.due.date() <= date.today()
             options = [orm_card.english] + [incorrect_option.option for incorrect_option in orm_card.incorrect_options]
             shuffle(options)
             card = {
@@ -250,9 +253,11 @@ def get_review_cards(username: Annotated[str, None] = None, language: Annotated[
                 "options": options,
                 "state": FSRSStateEnum.get_name(interaction.state),
             }
+            if is_due:
+                due_cards.append(card)
             cards.append(card)
         shuffle(cards)
-        return JSONResponse(content={'cards': cards}, status_code=200)
+        return JSONResponse(content={'cards': cards, 'dueCards': due_cards}, status_code=200)
     except json.decoder.JSONDecodeError:
         logging.error("Couldn't parse JSON from model response")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
@@ -285,10 +290,16 @@ def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Sessio
         rating = FSRSRatingEnum.Again if is_incorrect else FSRSRatingEnum(payload.rating)
 
         try:
+            # Update card interaction if exists
             card_interaction = db.query(UserCardInteraction)\
-                .filter(and_(UserCardInteraction.user_id == user.id,
-                             UserCardInteraction.card_id == card_id))\
-                .one()
+                                .join(UserCardInteraction.card)\
+                                .options(joinedload(UserCardInteraction.card))\
+                                .filter(
+                                    and_(UserCardInteraction.user_id == user.id,
+                                         Card.language == card.language,
+                                         UserCardInteraction.card_id == card_id))\
+                                .one()
+
             fsrs_scheduling_cards = fsrs.repeat(card_interaction.to_fsrs_card(), now)
             new_card_interaction = fsrs_scheduling_cards[rating].card.to_dict()
             new_card_interaction["rating"] = fsrs_scheduling_cards[rating].review_log.rating.value
@@ -302,9 +313,8 @@ def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Sessio
             for key, value in new_card_interaction.items():
                 setattr(card_interaction, key, value)
 
-            db.commit()
-
         except NoResultFound:
+            # Add card interaction as it doesn't exist
             card_interaction = FSRSCard()
             fsrs_scheduling_cards = fsrs.repeat(card_interaction, now)
             card_interaction = fsrs_scheduling_cards[rating].card.to_dict()
@@ -317,21 +327,26 @@ def rate_card_interaction(card_id: int, payload: MarkCardSeenRequest, db: Sessio
                 card_interaction["due"] = datetime.fromisoformat(card_interaction["due"])
 
             card_interaction = UserCardInteraction(due=card_interaction["due"],
-                                                       stability=card_interaction["stability"],
-                                                       difficulty=card_interaction["difficulty"],
-                                                       elapsed_days=card_interaction["elapsed_days"],
-                                                       scheduled_days=card_interaction["scheduled_days"],
-                                                       reps=card_interaction["reps"],
-                                                       lapses=card_interaction["lapses"],
-                                                       state=card_interaction["state"],
-                                                       rating=card_interaction["rating"],
-                                                       last_review=card_interaction["last_review"],
-                                                       user_id=user.id,
-                                                       card_id=card.id,
-                                                       )
+                                                   stability=card_interaction["stability"],
+                                                   difficulty=card_interaction["difficulty"],
+                                                   elapsed_days=card_interaction["elapsed_days"],
+                                                   scheduled_days=card_interaction["scheduled_days"],
+                                                   reps=card_interaction["reps"],
+                                                   lapses=card_interaction["lapses"],
+                                                   state=card_interaction["state"],
+                                                   rating=card_interaction["rating"],
+                                                   last_review=card_interaction["last_review"],
+                                                   user_id=user.id,
+                                                   card_id=card.id,
+                                                   )
             db.add(card_interaction)
-            db.commit()
-        return JSONResponse(content={"message": "Success"}, status_code=200)
+        db.commit()
+
+        # Saves request to check if due deck should update
+        is_due = card_interaction.due.date() <= date.today()
+        if is_due:
+            return JSONResponse(content={"isDue": True}, status_code=200)
+        return JSONResponse(content={"isDue": False}, status_code=200)
     except HTTPException as e:
         raise e
     except Exception as e:
