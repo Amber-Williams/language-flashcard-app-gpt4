@@ -30,7 +30,8 @@ const StudyToggle = ({ studyToggleTab, setStudyToggleTab, dueCount, allCount }: 
         },
       }}
       centered
-      sx={(theme) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sx={(theme: any) => ({
         p: 1,
         mt: 4,
         maxWidth: 400,
@@ -51,7 +52,8 @@ const StudyToggle = ({ studyToggleTab, setStudyToggleTab, dueCount, allCount }: 
       })}
     >
       <Core.Tab
-        sx={(theme) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sx={(theme: any) => ({
           '&.Mui-selected': {
             backgroundColor: theme.palette.background.paper,
             borderRadius: '16px',
@@ -64,7 +66,8 @@ const StudyToggle = ({ studyToggleTab, setStudyToggleTab, dueCount, allCount }: 
         }
       />
       <Core.Tab
-        sx={(theme) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sx={(theme: any) => ({
           '&.Mui-selected': {
             backgroundColor: theme.palette.background.paper,
             borderRadius: '16px',
